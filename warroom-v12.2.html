@@ -191,6 +191,23 @@ td.flash{animation:cellflash .9s ease-out}
     <div class="mut" style="margin-top:10px">说明：导入器为宽容模式——字段缺失自动补默认值，字段名兼容 marketValue/amount、targetRatio/target 等写法；基金可选填 cost（持有成本）字段以启用精确数据校验；交易记录可选填 shares/nav 字段。结构错误会在上方给出明确报错而不是静默失败。部分沙箱环境禁用 localStorage，此时"保存到浏览器"会提示失败，请用「导出JSON」做持久备份。行内编辑的修改会自动静默保存。</div>
   </div>
   <div class="card">
+    <h3>☁️ Gist 同步配置（一键推送）</h3>
+    <div class="mut" style="margin-bottom:10px">配置 GitHub Token 和 Gist ID，修改数据后直接点击推送。如果浏览器 CORS 限制导致推送失败，下方会提供手动复制方案。</div>
+    <div class="row" style="flex-wrap:wrap;gap:10px">
+      <label>Token <input id="gistToken" type="password" placeholder="ghp_xxxx 或 github_pat_xxx" style="width:260px"></label>
+      <label>Gist ID <input id="gistId" type="text" placeholder="46ee0035ea..." style="width:220px"></label>
+      <button class="btn" id="gistSaveConfig">💾 保存配置</button>
+      <button class="btn primary" id="gistPush">☁️ 推送到 Gist</button>
+    </div>
+    <div id="gistStatus" style="margin-top:8px;font-size:13px"></div>
+    <div id="gistFallback" style="display:none;margin-top:10px">
+      <div class="mut">浏览器阻止了自动推送，请复制下方 JSON 到 Gist 手动更新：</div>
+      <textarea id="gistFallbackBox" style="width:100%;height:200px;font-size:11px" readonly></textarea>
+      <div class="row" style="margin-top:6px"><button class="btn" id="gistCopyBtn">📋 复制到剪贴板</button></div>
+    </div>
+    <div class="mut" style="margin-top:6px;font-size:12px">Token 仅保存在浏览器本地。Classic Token 勾选 <b>gist</b> 权限；Fine-grained Token 需勾选 Gist 读写权限。</div>
+  </div>
+  <div class="card">
     <h3>📊 总仓位分配编辑</h3>
     <div class="mut" style="margin-bottom:10px">修改四大仓位占总资产的百分比（合计建议 = 100%）</div>
     <div class="row" id="allocationRow">
@@ -869,11 +886,12 @@ document.getElementById('allocSave').onclick=()=>{
 document.getElementById('refreshBtn').onclick=refreshQuotes;
 
 /* 远程同步（从 GitHub Gist 拉取最新 portfolio） */
-const GIST_URL='https://gist.githubusercontent.com/camovibe/46ee0035eaeeeb05a19d981ff2948f18/raw/89ebbc7a8e2148e2bc2a7ef8f776e3f1272aa4f7/portfolio.json';
+const GIST_URL='https://gist.githubusercontent.com/camovibe/46ee0035eaeeeb05a19d981ff2948f18/raw/portfolio.json';
 async function syncFromGist(){
   try{
     toast('正在从 Gist 同步...');
-    const res=await fetch(GIST_URL,{cache:'no-cache'});
+    const url=GIST_URL+'?t='+Date.now();
+    const res=await fetch(url,{cache:'no-cache'});
     if(!res.ok)throw new Error('HTTP '+res.status);
     const text=await res.text();
     const json=JSON.parse(text);
@@ -883,6 +901,81 @@ async function syncFromGist(){
   }catch(e){toast('同步失败：'+e.message);}
 }
 document.getElementById('syncBtn').onclick=syncFromGist;
+
+/* Gist 一键推送 */
+const GIST_LS_KEY='warroom_gist_config';
+function loadGistConfig(){
+  try{
+    const s=localStorage.getItem(GIST_LS_KEY);
+    if(s){
+      const c=JSON.parse(s);
+      if(c.token)document.getElementById('gistToken').value=c.token;
+      if(c.gistId)document.getElementById('gistId').value=c.gistId;
+    }
+  }catch(e){}
+}
+function saveGistConfig(){
+  const token=document.getElementById('gistToken').value.trim();
+  const gistId=document.getElementById('gistId').value.trim();
+  if(!token||!gistId){toast('请填写 Token 和 Gist ID');return;}
+  localStorage.setItem(GIST_LS_KEY,JSON.stringify({token,gistId}));
+  toast('配置已保存到浏览器');
+}
+async function pushToGist(){
+  const token=document.getElementById('gistToken').value.trim();
+  const gistId=document.getElementById('gistId').value.trim();
+  const statusEl=document.getElementById('gistStatus');
+  const fallbackEl=document.getElementById('gistFallback');
+  const fallbackBox=document.getElementById('gistFallbackBox');
+  if(!token||!gistId){toast('请先填写 Token 和 Gist ID 并保存');return;}
+  fallbackEl.style.display='none';
+  try{
+    statusEl.innerHTML='<div class="mut">正在推送...</div>';
+    const res=await fetch(`https://api.github.com/gists/${gistId}`,{
+      method:'PATCH',
+      mode:'cors',
+      cache:'no-cache',
+      headers:{
+        'Authorization':`token ${token}`,
+        'Content-Type':'application/json',
+        'Accept':'application/vnd.github+json',
+        'X-Requested-With':'XMLHttpRequest'
+      },
+      body:JSON.stringify({
+        files:{
+          'portfolio.json':{
+            content:JSON.stringify(state,null,2)
+          }
+        }
+      })
+    });
+    if(!res.ok){
+      const txt=await res.text();
+      throw new Error(`HTTP ${res.status} ${txt.slice(0,200)}`);
+    }
+    statusEl.innerHTML='<div class="okbox">✅ 已推送到 Gist，手机端点击「远程同步」即可获取最新数据</div>';
+    toast('推送成功');
+  }catch(e){
+    const msg=e.message||'';
+    const isNetwork=msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS')||msg.includes('fetch');
+    if(isNetwork){
+      statusEl.innerHTML='<div class="warnbox">❌ 浏览器 CORS 限制阻止了自动推送，请使用下方手动复制方案。</div>';
+      fallbackBox.value=JSON.stringify(state,null,2);
+      fallbackEl.style.display='block';
+    }else{
+      statusEl.innerHTML=`<div class="warnbox">❌ 推送失败：${e.message}</div>`;
+    }
+    toast('推送失败');
+  }
+}
+document.getElementById('gistSaveConfig').onclick=saveGistConfig;
+document.getElementById('gistPush').onclick=pushToGist;
+document.getElementById('gistCopyBtn').onclick=()=>{
+  const box=document.getElementById('gistFallbackBox');
+  box.select();
+  document.execCommand('copy');
+  toast('已复制 JSON 到剪贴板');
+};
 
 document.getElementById('cmCalc').onclick=()=>{
   const oldCost=num(document.getElementById('cmOldCost').value);
@@ -909,6 +1002,7 @@ state=loadState();
 document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
 renderAll();
 loadAllocation();
+loadGistConfig();
 </script>
 </body>
 </html>
