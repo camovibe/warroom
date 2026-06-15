@@ -66,6 +66,8 @@ td.flash{animation:cellflash .9s ease-out}
 <header>
   <h1>⚔️ 投资作战室 <span class="badge">v12.2 · 估值闸门+信号联动+行内编辑</span></h1>
   <span class="mut" id="hdStat"></span>
+  <button class="btn" id="refreshBtn" title="从腾讯财经刷新有份额的ETF最新价">🔄 刷新行情</button>
+  <button class="btn primary" id="syncBtn" title="从 GitHub Gist 远程同步最新 portfolio">🔄 远程同步</button>
 </header>
 <nav id="nav">
   <button data-t="overview" class="on">📊 仓位总览</button>
@@ -223,6 +225,7 @@ const STAGE_COEF={'3':1.2,'2':1,'1.5':0.6,'1':0.3,'0':0};
 const ATTACK_PACE={'3':0.35,'2':0.25,'1.5':0.15,'1':0.1,'0':0};
 const PE_PROXY={'563020':'510880','021208':'510050','110020':'510300','513100':'513100','518880':'518880'};
 const SECTOR_MAP={'159819':'AI算力','562500':'人形机器人','512480':'半导体'};
+const TX_MAP={'563020':'sh563020','159819':'sz159819','562500':'sh562500','512480':'sh512480','518880':'sh518880','513100':'sh513100','513500':'sh513500','510300':'sh510300','510500':'sh510500','510880':'sh510880','510050':'sh510050','588000':'sh588000','159915':'sz159915','159920':'sz159920','513050':'sh513050','512100':'sh512100'};
 
 const DEFAULT_DATA={
 "holdings":[
@@ -314,6 +317,50 @@ function persistSilent(){
   state.lastSaved=new Date().toISOString();
   try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
   renderAll();
+}
+
+/* ---------- 前端行情刷新（腾讯接口，无CORS） ---------- */
+async function refreshQuotes(){
+  const need=[];
+  const collect=f=>{
+    const hasShares=f.shares!=null&&isFinite(Number(f.shares))&&Number(f.shares)>0;
+    const hasPrice=f._lastPrice!=null&&isFinite(Number(f._lastPrice))&&Number(f._lastPrice)>0;
+    if((hasShares||hasPrice)&&TX_MAP[f.code])need.push(TX_MAP[f.code]);
+  };
+  state.holdings.forEach(g=>g.funds.forEach(collect));
+  state.customFunds.forEach(collect);
+  if(!need.length){toast('没有可刷新的 ETF 持仓；请确保基金有 shares 或 _lastPrice 字段，且 code 在腾讯映射表中');return;}
+  try{
+    const res=await fetch(`https://qt.gtimg.cn/q=${need.join(',')}`);
+    const text=await res.text();
+    const lines=text.trim().split(';').filter(Boolean);
+    const priceMap={};
+    lines.forEach(line=>{
+      const m=line.match(/v_([a-z]+(\d+))="([^"]*)"/);
+      if(!m)return;
+      const rawCode=m[2];
+      const parts=m[3].split('~');
+      if(parts.length>3)priceMap[rawCode]=parseFloat(parts[3]);
+    });
+    let updated=0;
+    const apply=f=>{
+      const price=priceMap[f.code];
+      if(!price)return;
+      const hasShares=f.shares!=null&&isFinite(Number(f.shares))&&Number(f.shares)>0;
+      const shares=hasShares?Number(f.shares):(f._lastPrice>0?f.marketValue/f._lastPrice:0);
+      if(shares<=0)return;
+      const cost=f.cost!=null?f.cost:(f.marketValue-f.profit);
+      f.marketValue=Math.round(shares*price*100)/100;
+      f.profit=Math.round((f.marketValue-cost)*100)/100;
+      if(f.cost==null)f.cost=Math.round(cost*100)/100;
+      f._lastPrice=price;
+      f._lastPriceDate=new Date().toISOString().slice(0,10);
+      updated++;
+    };
+    state.holdings.forEach(g=>g.funds.forEach(apply));
+    state.customFunds.forEach(apply);
+    persist(`已刷新 ${updated} 只 ETF 行情（腾讯接口）`);
+  }catch(e){toast('行情刷新失败：'+e.message);}
 }
 
 function stats(){
@@ -743,6 +790,25 @@ document.getElementById('resetBtn').onclick=()=>{
   resetArmed=false;document.getElementById('resetBtn').textContent='🗑 恢复内置默认数据';
   state=normalize(JSON.parse(JSON.stringify(DEFAULT_DATA)));persist('已恢复默认数据');
 };
+
+/* 刷新行情按钮 */
+document.getElementById('refreshBtn').onclick=refreshQuotes;
+
+/* 远程同步（从 GitHub Gist 拉取最新 portfolio） */
+const GIST_URL='https://gist.githubusercontent.com/camovibe/46ee0035eaeeeb05a19d981ff2948f18/raw/89ebbc7a8e2148e2bc2a7ef8f776e3f1272aa4f7/portfolio.json';
+async function syncFromGist(){
+  try{
+    toast('正在从 Gist 同步...');
+    const res=await fetch(GIST_URL,{cache:'no-cache'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const text=await res.text();
+    const json=JSON.parse(text);
+    state=normalize(json);
+    persist('✅ 已从 Gist 远程同步');
+  }catch(e){toast('同步失败：'+e.message);}
+}
+document.getElementById('syncBtn').onclick=syncFromGist;
+
 document.getElementById('cmCalc').onclick=()=>{
   const oldCost=num(document.getElementById('cmOldCost').value);
   const oldShares=num(document.getElementById('cmOldShares').value);
