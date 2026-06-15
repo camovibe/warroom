@@ -191,6 +191,18 @@ td.flash{animation:cellflash .9s ease-out}
     <div class="mut" style="margin-top:10px">说明：导入器为宽容模式——字段缺失自动补默认值，字段名兼容 marketValue/amount、targetRatio/target 等写法；基金可选填 cost（持有成本）字段以启用精确数据校验；交易记录可选填 shares/nav 字段。结构错误会在上方给出明确报错而不是静默失败。部分沙箱环境禁用 localStorage，此时"保存到浏览器"会提示失败，请用「导出JSON」做持久备份。行内编辑的修改会自动静默保存。</div>
   </div>
   <div class="card">
+    <h3>📊 总仓位分配编辑</h3>
+    <div class="mut" style="margin-bottom:10px">修改四大仓位占总资产的百分比（合计建议 = 100%）</div>
+    <div class="row" id="allocationRow">
+      <label>核心仓 <input id="alloc-core" type="number" style="width:70px" min="0" max="100">%</label>
+      <label>战术仓 <input id="alloc-tactical" type="number" style="width:70px" min="0" max="100">%</label>
+      <label>对冲仓 <input id="alloc-hedge" type="number" style="width:70px" min="0" max="100">%</label>
+      <label>现金仓 <input id="alloc-cash" type="number" style="width:70px" min="0" max="100">%</label>
+      <button class="btn primary" id="allocSave">保存分配</button>
+    </div>
+    <div id="allocSum" style="margin-top:8px;font-size:13px"></div>
+  </div>
+  <div class="card">
     <h3>🧮 成本维护工具（解决平台"持仓收益"历史累加问题）</h3>
     <div class="mut" style="margin-bottom:10px">
       天天基金/支付宝的"持仓收益"是历史累加值，卖出后不会等比例减少，导致成本可能算成负数。<br>
@@ -282,19 +294,28 @@ function normalize(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('顶层必须是JSON对象');
   const hs=raw.holdings||raw.positions;
   if(!Array.isArray(hs))throw new Error('缺少 holdings 数组（兼容字段名 positions）');
-  const mapFund=f=>({
-    id:f.id||('f'+Math.random().toString(36).slice(2)),
-    code:String(f.code??''),
-    name:f.name||String(f.code??'未命名'),
-    marketValue:num(f.marketValue??f.amount??f.value),
-    profit:num(f.profit??f.pnl),
-    cost:(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null,
-    shares:(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null,
-    _lastPrice:(f._lastPrice!=null&&isFinite(Number(f._lastPrice)))?Number(f._lastPrice):null,
-    _lastPriceDate:f._lastPriceDate||null,
-    isPlanned:f.isPlanned!==false,
-    targetRatio:num(f.targetRatio??f.target)
-  });
+  const mapFund=f=>{
+    const marketValue=num(f.marketValue??f.amount??f.value);
+    const profit=num(f.profit??f.pnl);
+    let cost=(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null;
+    // 如果 cost 缺失但有市值和盈亏，自动推算（适配天天基金后台数据）
+    if(cost==null && marketValue!=null && profit!=null){
+      cost=Math.round((marketValue-profit)*100)/100;
+    }
+    return{
+      id:f.id||('f'+Math.random().toString(36).slice(2)),
+      code:String(f.code??''),
+      name:f.name||String(f.code??'未命名'),
+      marketValue,
+      profit,
+      cost,
+      shares:(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null,
+      _lastPrice:(f._lastPrice!=null&&isFinite(Number(f._lastPrice)))?Number(f._lastPrice):null,
+      _lastPriceDate:f._lastPriceDate||null,
+      isPlanned:f.isPlanned!==false,
+      targetRatio:num(f.targetRatio??f.target)
+    };
+  };
   return{
     holdings:hs.map(g=>({positionId:g.positionId||g.id||'core',funds:(g.funds||[]).map(mapFund)})),
     customFunds:Array.isArray(raw.customFunds)?raw.customFunds.map(mapFund):[],
@@ -502,6 +523,19 @@ function commitEdit(){
     const v=inp?parseFloat(inp.value):NaN;
     if(isFinite(v)&&v!==fund[field]){
       fund[field]=field==='targetRatio'?Math.max(0,v):v;
+      
+      // 自动三表联动：无论编辑市值还是盈亏，保持 cost + profit = marketValue
+      if(field==='marketValue'||field==='profit'){
+        if(fund.marketValue!=null && fund.profit!=null){
+          // 自动推算成本，让 cost + profit = marketValue 永远成立
+          fund.cost=Math.round((fund.marketValue-fund.profit)*100)/100;
+        }
+        // 同时更新 shares
+        if(fund._lastPrice>0){
+          fund.shares=Math.round(fund.marketValue/fund._lastPrice*100)/100;
+        }
+      }
+      
       flashTarget={fid:fund.id,f:field};
       persistSilent();
     }else renderAll();
@@ -791,8 +825,45 @@ document.getElementById('fileInp').onchange=e=>{
 document.getElementById('resetBtn').onclick=()=>{
   if(!resetArmed){resetArmed=true;document.getElementById('resetBtn').textContent='⚠️ 再次点击确认恢复';setTimeout(()=>{resetArmed=false;document.getElementById('resetBtn').textContent='🗑 恢复内置默认数据';},3000);return;}
   resetArmed=false;document.getElementById('resetBtn').textContent='🗑 恢复内置默认数据';
-  state=normalize(JSON.parse(JSON.stringify(DEFAULT_DATA)));persist('已恢复默认数据');
+  state=normalize(JSON.parse(JSON.stringify(DEFAULT_DATA)));persist('已恢复默认数据');loadAllocation();
 };
+
+/* 总仓位分配编辑 */
+function loadAllocation(){
+  const t=curTargets();
+  document.getElementById('alloc-core').value=t.core;
+  document.getElementById('alloc-tactical').value=t.tactical;
+  document.getElementById('alloc-hedge').value=t.hedge;
+  document.getElementById('alloc-cash').value=t.cash;
+  updateAllocSum();
+}
+function updateAllocSum(){
+  const c=num(document.getElementById('alloc-core').value)||0;
+  const ta=num(document.getElementById('alloc-tactical').value)||0;
+  const h=num(document.getElementById('alloc-hedge').value)||0;
+  const ca=num(document.getElementById('alloc-cash').value)||0;
+  const sum=c+ta+h+ca;
+  const el=document.getElementById('allocSum');
+  if(sum===100)el.innerHTML='<div class="okbox">合计 = 100% ✓</div>';
+  else el.innerHTML=`<div class="warnbox">合计 = ${sum}% · 建议调整为100%（当前偏差 ${sum-100}%）</div>`;
+}
+document.getElementById('allocSave').onclick=()=>{
+  const c=num(document.getElementById('alloc-core').value)||0;
+  const ta=num(document.getElementById('alloc-tactical').value)||0;
+  const h=num(document.getElementById('alloc-hedge').value)||0;
+  const ca=num(document.getElementById('alloc-cash').value)||0;
+  if([c,ta,h,ca].some(v=>v<0||v>100)){toast('每项百分比必须在0~100之间');return;}
+  const key=new Date().toISOString().slice(0,7);
+  if(!state.monthlyTargets)state.monthlyTargets={};
+  state.monthlyTargets[key]={core:c,tactical:ta,hedge:h,cash:ca};
+  persistSilent();
+  updateAllocSum();
+  renderAll();
+  toast('仓位分配已保存');
+};
+['alloc-core','alloc-tactical','alloc-hedge','alloc-cash'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updateAllocSum);
+});
 
 /* 刷新行情按钮 */
 document.getElementById('refreshBtn').onclick=refreshQuotes;
@@ -808,6 +879,7 @@ async function syncFromGist(){
     const json=JSON.parse(text);
     state=normalize(json);
     persist('✅ 已从 Gist 远程同步');
+    loadAllocation();
   }catch(e){toast('同步失败：'+e.message);}
 }
 document.getElementById('syncBtn').onclick=syncFromGist;
@@ -836,6 +908,7 @@ document.getElementById('cmCalc').onclick=()=>{
 state=loadState();
 document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
 renderAll();
+loadAllocation();
 </script>
 </body>
 </html>
