@@ -289,6 +289,9 @@ function normalize(raw){
     marketValue:num(f.marketValue??f.amount??f.value),
     profit:num(f.profit??f.pnl),
     cost:(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null,
+    shares:(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null,
+    _lastPrice:(f._lastPrice!=null&&isFinite(Number(f._lastPrice)))?Number(f._lastPrice):null,
+    _lastPriceDate:f._lastPriceDate||null,
     isPlanned:f.isPlanned!==false,
     targetRatio:num(f.targetRatio??f.target)
   });
