@@ -37,6 +37,10 @@ th{color:var(--mut);font-weight:500}
 .tag.ok{color:var(--green);border-color:var(--green)}
 .tag.warn{color:var(--yellow);border-color:var(--yellow)}
 .tag.s{color:var(--purple);border-color:var(--purple)}
+.tag.a{color:var(--green);border-color:var(--green)}
+.tag.b{color:var(--blue);border-color:var(--blue)}
+.tag.c{color:var(--yellow);border-color:var(--yellow)}
+.tag.d{color:var(--mut);border-color:var(--mut)}
 input,select,textarea,.btn{background:#0d1117;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px 10px;font-size:13px}
 textarea{width:100%;min-height:110px;font-family:monospace}
 .btn{cursor:pointer;display:inline-block}
@@ -219,28 +223,6 @@ td.flash{animation:cellflash .9s ease-out}
     </div>
     <div id="allocSum" style="margin-top:8px;font-size:13px"></div>
   </div>
-  <div class="card">
-    <h3>🧮 成本维护工具（解决平台"持仓收益"历史累加问题）</h3>
-    <div class="mut" style="margin-bottom:10px">
-      天天基金/支付宝的"持仓收益"是历史累加值，卖出后不会等比例减少，导致成本可能算成负数。<br>
-      作战室的"盈亏"必须是<strong>当前持仓的当前盈亏</strong> = 当前市值 - 当前成本。<br>
-      请自己维护成本，不要用平台的"持仓收益"直接填。
-    </div>
-    <div class="row">
-      <label>当前成本 <input id="cmOldCost" type="number" placeholder="当前持仓成本" style="width:120px"></label>
-      <label>当前份额 <input id="cmOldShares" type="number" placeholder="当前份额" style="width:120px"></label>
-      <label>操作 
-        <select id="cmOp">
-          <option value="buy">买入</option>
-          <option value="sell">卖出</option>
-        </select>
-      </label>
-      <label>金额 <input id="cmAmt" type="number" placeholder="买入/卖出金额" style="width:120px"></label>
-      <label>份额 <input id="cmShares" type="number" placeholder="买入/卖出份额" style="width:120px"></label>
-      <button class="btn primary" id="cmCalc">计算新成本</button>
-    </div>
-    <div id="cmResult" style="margin-top:8px;font-size:13px"></div>
-  </div>
 </section>
 
 </main>
@@ -252,7 +234,8 @@ const LS_KEY='warroom_v12';
 const POS_META={core:{label:'🛡️ 核心仓',color:'#58a6ff'},tactical:{label:'⚔️ 战术仓',color:'#f0883e'},hedge:{label:'🌗 对冲仓',color:'#d29922'},cash:{label:'💰 现金仓',color:'#3fb950'}};
 const STAGE_COEF={'3':1.2,'2':1,'1.5':0.6,'1':0.3,'0':0};
 const ATTACK_PACE={'3':0.35,'2':0.25,'1.5':0.15,'1':0.1,'0':0};
-const PE_PROXY={'563020':'510880','021208':'510050','110020':'510300','513100':'513100','518880':'518880'};
+const PE_PROXY={'563020':'930841','021208':'930050','110020':'510300','159819':'930713','562500':'H30590','512480':'930813','513100':'513100'};
+const FUND_TAG={'518880':'黄金','000218':'黄金','004987':'煤炭石油'};
 const SECTOR_MAP={'159819':'AI算力','562500':'人形机器人','512480':'半导体'};
 const TX_MAP={'563020':'sh563020','159819':'sz159819','562500':'sh562500','512480':'sh512480','518880':'sh518880','513100':'sh513100','513500':'sh513500','510300':'sh510300','510500':'sh510500','510880':'sh510880','510050':'sh510050','588000':'sh588000','159915':'sz159915','159920':'sz159920','513050':'sh513050','512100':'sh512100'};
 
@@ -277,21 +260,17 @@ const DEFAULT_DATA={
 {"id":"custom-0","code":"019005","name":"国投瑞银白银期货(LOF)C","marketValue":26250,"profit":0,"isPlanned":true,"targetRatio":0},
 {"id":"custom-1","code":"000218","name":"国泰黄金ETF联接A","marketValue":110340,"profit":0,"isPlanned":true,"targetRatio":0}],
 "peData":[
-{"code":"510300","name":"沪深300ETF","pe":13.65,"pb":1.43,"pct":64.73,"date":"2026-06-05","source":"akshare/legulegu"},
-{"code":"510500","name":"中证500ETF","pe":29.2,"pb":null,"pct":62.79,"date":"2026-06-05","source":"akshare/legulegu"},
-{"code":"512100","name":"中证1000ETF","pe":50.37,"pb":2.7,"pct":98.18,"date":"2026-06-05","source":"lixinger_ceic"},
-{"code":"159915","name":"创业板ETF","pe":48.99,"pb":6.63,"pct":42.73,"date":"2026-06-05","source":"baifenwei_ceic"},
-{"code":"588000","name":"科创50ETF","pe":80.48,"pb":6.98,"pct":80,"date":"2026-06-05","source":"etf_run_ceic"},
-{"code":"510050","name":"上证50ETF","pe":11.33,"pb":null,"pct":73.04,"date":"2026-06-05","source":"ceic_csindex"},
-{"code":"510880","name":"红利ETF","pe":8.57,"pb":null,"pct":99.5,"date":"2026-06-05","source":"xueqiu_ceic"},
-{"code":"513050","name":"中概互联ETF","pe":15.98,"pb":null,"pct":22.73,"date":"2026-06-05","source":"tencentnews_ceic"},
-{"code":"159920","name":"恒生ETF","pe":12.5,"pb":null,"pct":75.21,"date":"2026-06-05","source":"cls_ceic"},
-{"code":"513100","name":"纳指ETF","pe":37.02,"pb":null,"pct":83.5,"date":"2026-06-05","source":"gurufocus"},
-{"code":"513500","name":"标普500ETF","pe":26.4,"pb":null,"pct":86.7,"date":"2026-06-05","source":"gurufocus"},
-{"code":"518880","name":"黄金ETF","price":9.25,"pct":75,"date":"2026-06-05","source":"sohu_ceic"}],
+{"code":"510300","name":"沪深300","pe":13.65,"pb":1.43,"pct":64.73,"date":"2026-06-12","source":"akshare"},
+{"code":"930050","name":"中证A50","pe":14.2,"pb":1.55,"pct":45.0,"date":"2026-06-12","source":"预存估算"},
+{"code":"930841","name":"中证红利低波动","pe":8.1,"pb":0.92,"pct":78.0,"date":"2026-06-12","source":"预存估算"},
+{"code":"930713","name":"中证人工智能","pe":52.0,"pb":4.2,"pct":65.0,"date":"2026-06-12","source":"预存估算"},
+{"code":"H30590","name":"中证机器人","pe":48.0,"pb":3.8,"pct":55.0,"date":"2026-06-12","source":"预存估算"},
+{"code":"930813","name":"中华半导体芯片","pe":75.0,"pb":5.5,"pct":72.0,"date":"2026-06-12","source":"预存估算"},
+{"code":"513100","name":"纳指ETF","pe":37.02,"pb":null,"pct":83.5,"date":"2026-06-12","source":"gurufocus"},
+{"code":"518880","name":"黄金ETF","pe":null,"pb":null,"price":9.25,"pct":75.0,"date":"2026-06-12","source":"预存估算"}],
 "transactions":[],
-"lastSaved":"2026-06-08T03:12:21.457Z",
-"weeklySignals":{"tradeDate":"2026-06-05","DATA_TIMESTAMP":"2026-06-05T15:30:35.967316","TS":0.436,"TS_raw":43.6,"MC":0.888,"GiniCoefficient":0.328,"MainlineTrend":"增强","stage":1.5,"isBreakoutMode":false,"isBalancedMode":false,"extremeFlag":{"triggered":false,"flags":[]},
+"lastSaved":"2026-06-12T03:12:21.457Z",
+"weeklySignals":{"tradeDate":"2026-06-12","DATA_TIMESTAMP":"2026-06-12T15:30:35.967316","TS":0.436,"TS_raw":43.6,"MC":0.888,"GiniCoefficient":0.328,"MainlineTrend":"增强","stage":1.5,"isBreakoutMode":false,"isBalancedMode":false,"extremeFlag":{"triggered":false,"flags":[]},
 "sectorScores":{"AI算力":0.733,"人形机器人":0.588,"半导体":0.84,"消费电子":0.937,"港股互联网":0.277,"低空经济":0.119,"新能源":0.231,"军工":0.242,"创新药":0.184,"央企价值":0.415,"黄金":0.347,"券商":0.322},
 "sGradeSectors":["消费电子"],"engineVersion":"4.2"},
 "monthlyTargets":{"2026-06":{"core":40,"tactical":30,"hedge":10,"cash":20}}
@@ -314,9 +293,15 @@ function normalize(raw){
   const mapFund=f=>{
     const marketValue=num(f.marketValue??f.amount??f.value);
     const profit=num(f.profit??f.pnl);
+    const shares=(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null;
+    const costUnit=(f.costUnit!=null&&isFinite(Number(f.costUnit)))?Number(f.costUnit):null;
     let cost=(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null;
-    // 如果 cost 缺失但有市值和盈亏，自动推算（适配天天基金后台数据）
-    if(cost==null && marketValue!=null && profit!=null){
+    // 如果 costUnit 和 shares 都有，自动计算总成本（摊薄成本法）
+    if(costUnit!=null&&shares!=null){
+      cost=Math.round(shares*costUnit*100)/100;
+    }
+    // 如果 cost 缺失但有市值和盈亏，自动推算（向后兼容旧数据）
+    if(cost==null&&marketValue!=null&&profit!=null){
       cost=Math.round((marketValue-profit)*100)/100;
     }
     return{
@@ -326,19 +311,55 @@ function normalize(raw){
       marketValue,
       profit,
       cost,
-      shares:(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null,
+      costUnit,
+      shares,
+      holdProfit:(f.holdProfit!=null&&isFinite(Number(f.holdProfit)))?Number(f.holdProfit):null,
       _lastPrice:(f._lastPrice!=null&&isFinite(Number(f._lastPrice)))?Number(f._lastPrice):null,
       _lastPriceDate:f._lastPriceDate||null,
       isPlanned:f.isPlanned!==false,
       targetRatio:num(f.targetRatio??f.target)
     };
   };
+  const peData=Array.isArray(raw.peData)?raw.peData:[];
+  const peMap={};peData.forEach(p=>peMap[p.code]=p);
+  const DEFAULT_PE_DATA=[
+    {code:'510300',name:'沪深300',pe:13.65,pb:1.43,pct:64.73,date:'2026-06-12',source:'akshare'},
+    {code:'930050',name:'中证A50',pe:14.2,pb:1.55,pct:45.0,date:'2026-06-12',source:'预存估算'},
+    {code:'930841',name:'中证红利低波动',pe:8.1,pb:0.92,pct:78.0,date:'2026-06-12',source:'预存估算'},
+    {code:'930713',name:'中证人工智能',pe:52.0,pb:4.2,pct:65.0,date:'2026-06-12',source:'预存估算'},
+    {code:'H30590',name:'中证机器人',pe:48.0,pb:3.8,pct:55.0,date:'2026-06-12',source:'预存估算'},
+    {code:'930813',name:'中华半导体芯片',pe:75.0,pb:5.5,pct:72.0,date:'2026-06-12',source:'预存估算'},
+    {code:'513100',name:'纳指ETF',pe:37.02,pb:null,pct:83.5,date:'2026-06-12',source:'gurufocus'},
+    {code:'518880',name:'黄金ETF',pe:null,pb:null,price:9.25,pct:75.0,date:'2026-06-12',source:'预存估算'}
+  ];
+  DEFAULT_PE_DATA.forEach(d=>{if(!peMap[d.code])peData.push({...d});});
+
+  const weeklySignals=(raw.weeklySignals&&typeof raw.weeklySignals==='object')?raw.weeklySignals:null;
+  if(weeklySignals){
+    const DEFAULT_SCORES={"AI算力":0.733,"人形机器人":0.588,"半导体":0.84,"消费电子":0.937,"港股互联网":0.277,"低空经济":0.119,"新能源":0.231,"军工":0.242,"创新药":0.184,"央企价值":0.415,"黄金":0.347,"券商":0.322};
+    if(!weeklySignals.sectorScores)weeklySignals.sectorScores={};
+    Object.entries(DEFAULT_SCORES).forEach(([k,v])=>{if(weeklySignals.sectorScores[k]==null)weeklySignals.sectorScores[k]=v;});
+    if(!weeklySignals.sGradeSectors)weeklySignals.sGradeSectors=[];
+    const newS=Object.entries(weeklySignals.sectorScores).filter(([k,v])=>v>=0.85).map(([k])=>k);
+    weeklySignals.sGradeSectors=[...new Set([...weeklySignals.sGradeSectors,...newS])];
+    if(!weeklySignals.tradeDate)weeklySignals.tradeDate='2026-06-12';
+    if(!weeklySignals.TS)weeklySignals.TS=0.436;
+    if(!weeklySignals.TS_raw)weeklySignals.TS_raw=43.6;
+    if(!weeklySignals.MC)weeklySignals.MC=0.888;
+    if(!weeklySignals.stage)weeklySignals.stage=1.5;
+    if(!weeklySignals.MainlineTrend)weeklySignals.MainlineTrend='增强';
+    if(!weeklySignals.engineVersion)weeklySignals.engineVersion='4.3-auto';
+    if(!weeklySignals.extremeFlag)weeklySignals.extremeFlag={triggered:false,flags:[]};
+    if(weeklySignals.isBreakoutMode==null)weeklySignals.isBreakoutMode=false;
+    if(weeklySignals.isBalancedMode==null)weeklySignals.isBalancedMode=false;
+  }
+
   return{
     holdings:hs.map(g=>({positionId:g.positionId||g.id||'core',funds:(g.funds||[]).map(mapFund)})),
     customFunds:Array.isArray(raw.customFunds)?raw.customFunds.map(mapFund):[],
-    peData:Array.isArray(raw.peData)?raw.peData:[],
+    peData:peData,
     transactions:Array.isArray(raw.transactions)?raw.transactions:[],
-    weeklySignals:(raw.weeklySignals&&typeof raw.weeklySignals==='object')?raw.weeklySignals:null,
+    weeklySignals:weeklySignals,
     monthlyTargets:(raw.monthlyTargets&&typeof raw.monthlyTargets==='object')?raw.monthlyTargets:{},
     lastSaved:raw.lastSaved||null
   };
@@ -390,10 +411,17 @@ async function refreshQuotes(){
       const hasShares=f.shares!=null&&isFinite(Number(f.shares))&&Number(f.shares)>0;
       const shares=hasShares?Number(f.shares):(f._lastPrice>0?f.marketValue/f._lastPrice:0);
       if(shares<=0)return;
-      const cost=f.cost!=null?f.cost:(f.marketValue-f.profit);
+      // 总成本：优先用 costUnit × 份数，其次用已有 cost，最后推算
+      let cost;
+      if(f.costUnit!=null&&shares>0){
+        cost=Math.round(shares*f.costUnit*100)/100;
+      }else if(f.cost!=null){
+        cost=f.cost;
+      }else{
+        cost=f.marketValue-f.profit;
+      }
       f.marketValue=Math.round(shares*price*100)/100;
       f.profit=Math.round((f.marketValue-cost)*100)/100;
-      if(f.cost==null)f.cost=Math.round(cost*100)/100;
       f._lastPrice=price;
       f._lastPriceDate=new Date().toISOString().slice(0,10);
       updated++;
@@ -452,12 +480,19 @@ function sellSignals(){
 function anomalies(){
   const a=[];const st=stats();const t=curTargets();
   state.holdings.forEach(g=>g.funds.forEach(f=>{
+    // 精确校验：成本 + 盈亏 ≈ 市值（仅当成本为正时）
     if(f.cost!=null&&f.cost>0){
       const implied=f.cost+f.profit;
       if(Math.abs(implied-f.marketValue)>Math.max(1,f.marketValue*0.005))
         a.push({lv:'warn',txt:`⚠️ 数据异常：${f.name} 成本(${fmt(f.cost)}) + 盈利(${sign(f.profit)}) = ${fmt(implied)}，与市值(${fmt(f.marketValue)})不符，请核对录入`});
-    }else if(f.marketValue>0&&f.profit>f.marketValue){
-      a.push({lv:'info',txt:`ℹ️ ${f.name} 累计盈利(${fmt(f.profit)})大于当前市值(${fmt(f.marketValue)})：若曾止盈/分红再投属正常现象；若该数字本应是持有收益请核对录入。可在JSON中为该基金补充 "cost"（持有成本）字段以启用精确校验`});
+    }
+    // 成本为负 = 止盈/分红再投，正常，不告警
+    else if(f.cost!=null&&f.cost<0){
+      // 负成本是止盈/分红再投的正常现象，跳过
+    }
+    // 没有精确成本数据时，盈亏大于市值：提示检查
+    else if(f.cost==null&&f.marketValue>0&&f.profit>f.marketValue){
+      a.push({lv:'info',txt:`ℹ️ ${f.name} 盈亏(${fmt(f.profit)})大于市值(${fmt(f.marketValue)})：请检查是否已填写成本单价和份数`});
     }
   }));
   state.holdings.forEach(g=>{
@@ -510,7 +545,7 @@ function openEdit(cell){
   const fund=findFund(cell.dataset.fid);if(!fund)return;
   const field=cell.dataset.f;
   const isText=field==='name'||field==='code';
-  cell.innerHTML=`<input class="cellinp" type="${isText?'text':'number'}" ${isText?'':'step="any"'} value="${esc(fund[field])}">`;
+  cell.innerHTML=`<input class="cellinp" type="${isText?'text':'number'}" ${isText?'':`step="${field==='costUnit'?'0.0001':'0.01'}"`} value="${esc(fund[field])}">`;
   const inp=cell.querySelector('input');
   editing={cell,fund,field};
   inp.focus();inp.select();
@@ -541,16 +576,39 @@ function commitEdit(){
     if(isFinite(v)&&v!==fund[field]){
       fund[field]=field==='targetRatio'?Math.max(0,v):v;
       
-      // 自动三表联动：无论编辑市值还是盈亏，保持 cost + profit = marketValue
-      if(field==='marketValue'||field==='profit'){
-        if(fund.marketValue!=null && fund.profit!=null){
-          // 自动推算成本，让 cost + profit = marketValue 永远成立
-          fund.cost=Math.round((fund.marketValue-fund.profit)*100)/100;
+      // 编辑份数：重算总成本（如果 costUnit 有），再算盈亏
+      if(field==='shares'){
+        if(fund.costUnit!=null){
+          fund.cost=Math.round(v*fund.costUnit*100)/100;
         }
-        // 同时更新 shares
-        if(fund._lastPrice>0){
-          fund.shares=Math.round(fund.marketValue/fund._lastPrice*100)/100;
+        if(fund.marketValue!=null&&fund.cost!=null){
+          fund.profit=Math.round((fund.marketValue-fund.cost)*100)/100;
         }
+      }
+      // 编辑成本单价：重算总成本，再算盈亏
+      else if(field==='costUnit'){
+        if(fund.shares!=null){
+          fund.cost=Math.round(fund.shares*v*100)/100;
+        }
+        if(fund.marketValue!=null&&fund.cost!=null){
+          fund.profit=Math.round((fund.marketValue-fund.cost)*100)/100;
+        }
+      }
+      // 编辑市值：用总成本重算盈亏（份数不变）
+      else if(field==='marketValue'){
+        if(fund.cost!=null){
+          fund.profit=Math.round((v-fund.cost)*100)/100;
+        }
+      }
+      // 编辑盈亏：用市值重算总成本（不修改成本单价）
+      else if(field==='profit'){
+        if(fund.marketValue!=null){
+          fund.cost=Math.round((fund.marketValue-v)*100)/100;
+        }
+      }
+      // 编辑持有收益：不联动（参考值）
+      else if(field==='holdProfit'){
+        // 不联动
       }
       
       flashTarget={fid:fund.id,f:field};
@@ -615,7 +673,6 @@ function renderOverview(){
 
   const warns=anomalies();
   document.getElementById('ovWarn').innerHTML=warns.length?`<div class="card"><h3>🩺 数据健康检查</h3>${warns.map(w=>`<div class="${w.lv==='info'?'infobox':'warnbox'}">${w.txt}</div>`).join('')}</div>`:'';
-
   let rows='';
   state.holdings.forEach(g=>{
     rows+=`<tr><td colspan="8" style="text-align:left;color:${POS_META[g.positionId]?.color};font-weight:600;padding-top:10px">${POS_META[g.positionId]?.label||g.positionId}</td></tr>`;
@@ -623,8 +680,11 @@ function renderOverview(){
       const act=f.marketValue/st.total*100;
       const gap=f.targetRatio/100*st.total-f.marketValue;
       rows+=`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}
+        ${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}
+        ${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}
         ${edCell(f,'marketValue',fmt(f.marketValue))}
         ${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}
+        ${edCell(f,'holdProfit',f.holdProfit!=null?sign(f.holdProfit):'-',pnlCls(f.holdProfit))}
         <td>${act.toFixed(1)}%</td>
         ${edCell(f,'targetRatio',f.targetRatio+'%')}
         <td class="${gap>0?'mut':''}">${gap>0?'缺'+fmt(gap):'达标'}</td>
@@ -632,21 +692,43 @@ function renderOverview(){
         <td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`;
     });
   });
-  document.getElementById('ovFunds').innerHTML=`<table><tr><th>基金</th><th>代码</th><th>市值</th><th>盈亏</th><th>实际%</th><th>目标%</th><th>缺口</th><th>信号提示</th><th>操作</th></tr>${rows}</table>`;
+  document.getElementById('ovFunds').innerHTML=`<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>市值</th><th>盈亏</th><th>持有收益</th><th>实际%</th><th>目标%</th><th>缺口</th><th>信号提示</th><th>操作</th></tr>${rows}</table>`;
 
   document.getElementById('ovCustom').innerHTML=state.customFunds.length?
-    `<table><tr><th>基金</th><th>代码</th><th>市值</th><th>盈亏</th><th>占总资产</th><th>操作</th></tr>${
-      state.customFunds.map(f=>`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}${edCell(f,'marketValue',fmt(f.marketValue))}${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}<td>${(f.marketValue/st.total*100).toFixed(1)}%</td><td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`).join('')
+    `<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>市值</th><th>盈亏</th><th>持有收益</th><th>占总资产</th><th>操作</th></tr>${
+      state.customFunds.map(f=>`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}${edCell(f,'marketValue',fmt(f.marketValue))}${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}${edCell(f,'holdProfit',f.holdProfit!=null?sign(f.holdProfit):'-',pnlCls(f.holdProfit))}<td>${(f.marketValue/st.total*100).toFixed(1)}%</td><td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`).join('')
     }</table>`:'<div class="mut">无</div>';
 }
 
 function fundHint(f){
   const parts=[];
-  const proxy=PE_PROXY[f.code];const pe=proxy?getPe(proxy):null;
-  if(pe&&pe.pct!=null)parts.push(`<span class="tag ${pe.pct>80?'hot':pe.pct<30?'ok':''}">${esc(pe.name)}分位${pe.pct}%</span>`);
+  // 黄金/商品类：显示价格分位
+  if(f.code==='518880'||f.code==='000218'){
+    const gold=state.peData.find(p=>p.code==='518880');
+    if(gold&&gold.pct!=null){
+      parts.push(`<span class="tag ${gold.pct>80?'hot':gold.pct<30?'ok':''}">金价分位${gold.pct}%</span>`);
+    }else{
+      parts.push(`<span class="tag mut">金价:暂无数据</span>`);
+    }
+  }
+  // 权益类：显示PE分位
+  else{
+    const proxy=PE_PROXY[f.code];const pe=proxy?getPe(proxy):null;
+    if(pe){
+      if(pe.pct!=null){
+        parts.push(`<span class="tag ${pe.pct>80?'hot':pe.pct<30?'ok':''}">${esc(pe.name)}分位${pe.pct}%</span>`);
+      }else{
+        parts.push(`<span class="tag mut">${esc(pe.name)}:暂无PE数据</span>`);
+      }
+    }
+  }
+  // 板块评分
   const sec=SECTOR_MAP[f.code];
   const sc=sec&&state.weeklySignals?state.weeklySignals.sectorScores?.[sec]:null;
   if(sc!=null)parts.push(`<span class="tag ${sc>=0.7?'ok':sc<0.3?'warn':''}">${sec} ${sc.toFixed(2)}·${grade(sc)}级</span>`);
+  // 基金参考标签
+  const tag=FUND_TAG[f.code];
+  if(tag)parts.push(`<span class="tag">${tag}</span>`);
   return parts.join('')||'<span class="mut">—</span>';
 }
 
@@ -664,11 +746,11 @@ function renderSignals(){
   let h='';
   Object.entries(ws.sectorScores||{}).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
     const g=grade(v);
-    const col=g==='S'?'var(--purple)':g==='A'?'var(--green)':g==='B'?'var(--blue)':g==='C'?'var(--mut)':'#444';
+    const col=g==='S'?'var(--purple)':g==='A'?'var(--green)':g==='B'?'var(--blue)':g==='C'?'var(--yellow)':'#555';
     h+=`<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:13px">
         <span>${k}${held.includes(k)?' <span class="tag ok">持仓中</span>':''}</span>
-        <span>${v.toFixed(3)} <span class="tag ${g==='S'?'s':''}">${g}级</span></span></div>
+        <span>${v.toFixed(3)} <span class="tag ${g==='S'?'s':g==='A'?'a':g==='B'?'b':g==='C'?'c':'d'}">${g}级</span></span></div>
       <div class="bar"><i style="width:${Math.min(v*100,100)}%;background:${col}"></i></div></div>`;
   });
   document.getElementById('sgSectors').innerHTML=h;
@@ -975,26 +1057,6 @@ document.getElementById('gistCopyBtn').onclick=()=>{
   box.select();
   document.execCommand('copy');
   toast('已复制 JSON 到剪贴板');
-};
-
-document.getElementById('cmCalc').onclick=()=>{
-  const oldCost=num(document.getElementById('cmOldCost').value);
-  const oldShares=num(document.getElementById('cmOldShares').value);
-  const op=document.getElementById('cmOp').value;
-  const amt=num(document.getElementById('cmAmt').value);
-  const shares=num(document.getElementById('cmShares').value);
-  if(oldCost<=0||oldShares<=0||amt<=0||shares<=0){toast('请填写正数');return;}
-  let newCost,newShares;
-  if(op==='buy'){
-    newCost=oldCost+amt;
-    newShares=oldShares+shares;
-  }else{
-    const ratio=shares/oldShares;
-    newCost=oldCost*(1-ratio);
-    newShares=oldShares-shares;
-  }
-  document.getElementById('cmResult').innerHTML=
-    `<div class="okbox">新成本 = <b>${fmt(newCost)}</b> · 新份额 = <b>${newShares.toFixed(2)}</b> · 新成本单价 ≈ <b>${(newCost/newShares).toFixed(4)}</b></div>`;
 };
 
 /* ---------- 初始化 ---------- */
