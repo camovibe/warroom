@@ -1,0 +1,33 @@
+name: Daily Market Data
+
+on:
+  schedule:
+    - cron: '30 7 * * *'  # UTC 07:30 = 北京时间 15:30
+  workflow_dispatch:      # 支持手动触发
+
+jobs:
+  fetch-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install akshare requests
+
+      - name: Fetch market data
+        run: |
+          python warroom_market_fetch_v2.py --cron --output .
+
+      - name: Update Gist
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+        run: |
+          python update_gist.py --market-file "market_data_*.json"
