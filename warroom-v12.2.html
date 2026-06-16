@@ -354,12 +354,23 @@ function normalize(raw){
     if(weeklySignals.isBalancedMode==null)weeklySignals.isBalancedMode=false;
   }
 
+  // 计算板块连续S级周数
+  const sectorStreaks={};
+  const prevStreaks=raw.sectorStreaks||{};
+  if(weeklySignals&&weeklySignals.sectorScores){
+    Object.entries(weeklySignals.sectorScores).forEach(([k,v])=>{
+      if(v>=0.85)sectorStreaks[k]=(prevStreaks[k]||0)+1;
+      else sectorStreaks[k]=0;
+    });
+  }
+
   return{
     holdings:hs.map(g=>({positionId:g.positionId||g.id||'core',funds:(g.funds||[]).map(mapFund)})),
     customFunds:Array.isArray(raw.customFunds)?raw.customFunds.map(mapFund):[],
     peData:peData,
     transactions:Array.isArray(raw.transactions)?raw.transactions:[],
     weeklySignals:weeklySignals,
+    sectorStreaks:sectorStreaks,
     monthlyTargets:(raw.monthlyTargets&&typeof raw.monthlyTargets==='object')?raw.monthlyTargets:{},
     lastSaved:raw.lastSaved||null
   };
@@ -747,16 +758,25 @@ function renderSignals(){
   Object.entries(ws.sectorScores||{}).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
     const g=grade(v);
     const col=g==='S'?'var(--purple)':g==='A'?'var(--green)':g==='B'?'var(--blue)':g==='C'?'var(--yellow)':'#555';
+    const streak=state.sectorStreaks?.[k]||0;
+    const streakTag=g==='S'&&streak>=2?` <span class="tag ok">连续${streak}周</span>`:'';
     h+=`<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:13px">
-        <span>${k}${held.includes(k)?' <span class="tag ok">持仓中</span>':''}</span>
+        <span>${k}${held.includes(k)?' <span class="tag ok">持仓中</span>':''}${streakTag}</span>
         <span>${v.toFixed(3)} <span class="tag ${g==='S'?'s':g==='A'?'a':g==='B'?'b':g==='C'?'c':'d'}">${g}级</span></span></div>
       <div class="bar"><i style="width:${Math.min(v*100,100)}%;background:${col}"></i></div></div>`;
   });
   document.getElementById('sgSectors').innerHTML=h;
   const miss=(ws.sGradeSectors||[]).filter(s=>!held.includes(s));
-  document.getElementById('sgWatch').innerHTML=miss.length?
-    `<div class="card"><h3>👀 观察池提醒</h3><div class="warnbox">S级板块 <b>${miss.join('、')}</b> 无对应持仓。规则：连续2周S级 + Stage≥2 才用战术仓机动额度（≤总资产3%）介入，避免追单周脉冲</div></div>`:'';
+  if(miss.length){
+    const streaks=miss.map(s=>{const n=state.sectorStreaks?.[s]||1;return {s,n,ready:(n>=2&&si.stage>=2)};});
+    const ready=streaks.filter(x=>x.ready).map(x=>x.s);
+    const notReady=streaks.filter(x=>!x.ready).map(x=>`${x.s}(${x.n}周)`);
+    let alert='';
+    if(ready.length)alert+=`<div class="dangerbox">🚨 以下S级板块已连续≥2周且Stage≥2，符合战术仓介入条件：<b>${ready.join('、')}</b>。建议用机动额度（≤总资产3%）分批介入</div>`;
+    if(notReady.length)alert+=`<div class="warnbox">👀 观察池：${notReady.join('、')} — 连续不足2周或Stage<2，暂不满足介入条件</div>`;
+    document.getElementById('sgWatch').innerHTML=`<div class="card"><h3>👀 观察池提醒</h3>${alert}</div>`;
+  }else document.getElementById('sgWatch').innerHTML='';
 }
 
 function renderValuation(){
