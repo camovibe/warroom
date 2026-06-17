@@ -277,7 +277,9 @@ const DEFAULT_DATA={
 "weeklySignals":{"tradeDate":"2026-06-12","DATA_TIMESTAMP":"2026-06-12T15:30:35.967316","TS":0.436,"TS_raw":43.6,"MC":0.888,"GiniCoefficient":0.328,"MainlineTrend":"增强","stage":1.5,"isBreakoutMode":false,"isBalancedMode":false,"extremeFlag":{"triggered":false,"flags":[]},
 "sectorScores":{"AI算力":0.733,"人形机器人":0.588,"半导体":0.84,"消费电子":0.937,"港股互联网":0.277,"低空经济":0.119,"新能源":0.231,"军工":0.242,"创新药":0.184,"央企价值":0.415,"黄金":0.347,"券商":0.322},
 "sGradeSectors":["消费电子"],"engineVersion":"4.2"},
-"monthlyTargets":{"2026-06":{"core":40,"tactical":30,"hedge":10,"cash":20}}
+"monthlyTargets":{"2026-06":{"core":40,"tactical":30,"hedge":10,"cash":20}},
+"sectorStreaks":{"消费电子":2},
+"lastStreakWeek":"2026-W24"
 };
 
 let state=null,lastWeeklyRows=[],resetArmed=false;
@@ -1109,8 +1111,11 @@ async function syncFromGist(){
     const prevStreaks=state?.sectorStreaks||{};
     const prevStreakWeek=state?.lastStreakWeek;
     state=normalize(json);
-    state.sectorStreaks=prevStreaks;
-    state.lastStreakWeek=prevStreakWeek;
+    // 合并连续周数：本地与远程取较大值，避免新设备/空 localStorage 丢失累计
+    const merged={...(state.sectorStreaks||{})};
+    Object.entries(prevStreaks).forEach(([k,v])=>{merged[k]=Math.max(merged[k]||0,v);});
+    state.sectorStreaks=merged;
+    state.lastStreakWeek=prevStreakWeek||state.lastStreakWeek;
     calcSectorStreaks();
     persist('✅ 已从 Gist 远程同步');
     loadAllocation();
