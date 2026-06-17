@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>投资作战室 v12.2</title>
+<title>投资作战室 v12.5</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <style>
 :root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--mut:#8b949e;--blue:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--purple:#bc8cff}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -68,7 +71,7 @@ td.flash{animation:cellflash .9s ease-out}
 </head>
 <body>
 <header>
-  <h1>⚔️ 投资作战室 <span class="badge">v12.2 · 估值闸门+信号联动+行内编辑</span></h1>
+  <h1>⚔️ 投资作战室 <span class="badge">v12.5 · 估值闸门+信号联动+行内编辑+S级追踪</span></h1>
   <span class="mut" id="hdStat"></span>
   <button class="btn" id="refreshBtn" title="从腾讯财经刷新有份额的ETF最新价">🔄 刷新行情</button>
   <button class="btn primary" id="syncBtn" title="从 GitHub Gist 远程同步最新 portfolio">🔄 远程同步</button>
@@ -235,6 +238,7 @@ const POS_META={core:{label:'🛡️ 核心仓',color:'#58a6ff'},tactical:{label
 const STAGE_COEF={'3':1.2,'2':1,'1.5':0.6,'1':0.3,'0':0};
 const ATTACK_PACE={'3':0.35,'2':0.25,'1.5':0.15,'1':0.1,'0':0};
 const PE_PROXY={'563020':'930841','021208':'930050','110020':'510300','159819':'930713','562500':'H30590','512480':'930813','513100':'513100'};
+const COMMODITY_PROXY={'518880':'518880','000218':'518880'}; // 黄金联接复用黄金ETF分位；白银019005暂无分位代码故不纳入
 const FUND_TAG={'518880':'黄金','000218':'黄金','004987':'煤炭石油'};
 const SECTOR_MAP={'159819':'AI算力','562500':'人形机器人','512480':'半导体'};
 const TX_MAP={'563020':'sh563020','159819':'sz159819','562500':'sh562500','512480':'sh512480','518880':'sh518880','513100':'sh513100','513500':'sh513500','510300':'sh510300','510500':'sh510500','510880':'sh510880','510050':'sh510050','588000':'sh588000','159915':'sz159915','159920':'sz159920','513050':'sh513050','512100':'sh512100'};
@@ -317,7 +321,8 @@ function normalize(raw){
       _lastPrice:(f._lastPrice!=null&&isFinite(Number(f._lastPrice)))?Number(f._lastPrice):null,
       _lastPriceDate:f._lastPriceDate||null,
       isPlanned:f.isPlanned!==false,
-      targetRatio:num(f.targetRatio??f.target)
+      targetRatio:num(f.targetRatio??f.target),
+      priceHistory:Array.isArray(f.priceHistory)?f.priceHistory:[]
     };
   };
   const peData=Array.isArray(raw.peData)?raw.peData:[];
@@ -354,31 +359,49 @@ function normalize(raw){
     if(weeklySignals.isBalancedMode==null)weeklySignals.isBalancedMode=false;
   }
 
-  // 计算板块连续S级周数
-  const sectorStreaks={};
-  const prevStreaks=raw.sectorStreaks||{};
-  if(weeklySignals&&weeklySignals.sectorScores){
-    Object.entries(weeklySignals.sectorScores).forEach(([k,v])=>{
-      if(v>=0.85)sectorStreaks[k]=(prevStreaks[k]||0)+1;
-      else sectorStreaks[k]=0;
-    });
-  }
-
   return{
     holdings:hs.map(g=>({positionId:g.positionId||g.id||'core',funds:(g.funds||[]).map(mapFund)})),
     customFunds:Array.isArray(raw.customFunds)?raw.customFunds.map(mapFund):[],
     peData:peData,
     transactions:Array.isArray(raw.transactions)?raw.transactions:[],
     weeklySignals:weeklySignals,
-    sectorStreaks:sectorStreaks,
     monthlyTargets:(raw.monthlyTargets&&typeof raw.monthlyTargets==='object')?raw.monthlyTargets:{},
-    lastSaved:raw.lastSaved||null
+    lastSaved:raw.lastSaved||null,
+    sectorStreaks:(raw.sectorStreaks&&typeof raw.sectorStreaks==='object')?raw.sectorStreaks:{},
+    lastStreakWeek:raw.lastStreakWeek||null
   };
 }
 
 function loadState(){
-  try{const s=localStorage.getItem(LS_KEY);if(s)return normalize(JSON.parse(s));}catch(e){}
+  try{const s=localStorage.getItem(LS_KEY);if(s){
+    const st=normalize(JSON.parse(s));
+    calcSectorStreaks(st);
+    return st;
+  }}catch(e){}
   return normalize(JSON.parse(JSON.stringify(DEFAULT_DATA)));
+}
+function isoWeek(d){
+  const dt=new Date(d);
+  const t=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));
+  const day=t.getUTCDay()||7;
+  t.setUTCDate(t.getUTCDate()+4-day);
+  const ys=new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  const wk=Math.ceil(((t-ys)/864e5+1)/7);
+  return t.getUTCFullYear()+'-W'+String(wk).padStart(2,'0');
+}
+function calcSectorStreaks(st){
+  if(!st)st=state;
+  if(!st.weeklySignals||!st.weeklySignals.sectorScores)return;
+  const curWk=isoWeek(st.weeklySignals.tradeDate||'2026-06-12');
+  if(curWk===st.lastStreakWeek)return;
+  const scores=st.weeklySignals.sectorScores;
+  const streaks=st.sectorStreaks||{};
+  Object.entries(scores).forEach(([k,v])=>{
+    if(v>=0.85)streaks[k]=(streaks[k]||0)+1;
+    else streaks[k]=0;
+  });
+  st.sectorStreaks=streaks;
+  st.lastStreakWeek=curWk;
 }
 function persist(msg){
   state.lastSaved=new Date().toISOString();
@@ -405,7 +428,8 @@ async function refreshQuotes(){
   if(!need.length){toast('没有可刷新的 ETF 持仓；请确保基金有 shares 或 _lastPrice 字段，且 code 在腾讯映射表中');return;}
   try{
     const res=await fetch(`https://qt.gtimg.cn/q=${need.join(',')}`);
-    const text=await res.text();
+    const buf=await res.arrayBuffer();
+    const text=new TextDecoder('gbk').decode(buf);
     const lines=text.trim().split(';').filter(Boolean);
     const priceMap={};
     lines.forEach(line=>{
@@ -416,25 +440,29 @@ async function refreshQuotes(){
       if(parts.length>3)priceMap[rawCode]=parseFloat(parts[3]);
     });
     let updated=0;
+    const _today=new Date().toISOString().slice(0,10);
     const apply=f=>{
       const price=priceMap[f.code];
-      if(!price)return;
+      if(!price||!isFinite(price)||price<=0)return;
+      if(f._lastPrice!=null&&f._lastPrice>0&&Math.abs(price-f._lastPrice)/f._lastPrice>0.2){
+        console.warn('报价异常已忽略',f.code,price);return;
+      }
       const hasShares=f.shares!=null&&isFinite(Number(f.shares))&&Number(f.shares)>0;
       const shares=hasShares?Number(f.shares):(f._lastPrice>0?f.marketValue/f._lastPrice:0);
       if(shares<=0)return;
-      // 总成本：优先用 costUnit × 份数，其次用已有 cost，最后推算
       let cost;
-      if(f.costUnit!=null&&shares>0){
-        cost=Math.round(shares*f.costUnit*100)/100;
-      }else if(f.cost!=null){
-        cost=f.cost;
-      }else{
-        cost=f.marketValue-f.profit;
-      }
+      if(f.costUnit!=null&&shares>0){cost=Math.round(shares*f.costUnit*100)/100;}
+      else if(f.cost!=null){cost=f.cost;}
+      else{cost=f.marketValue-f.profit;}
       f.marketValue=Math.round(shares*price*100)/100;
       f.profit=Math.round((f.marketValue-cost)*100)/100;
       f._lastPrice=price;
-      f._lastPriceDate=new Date().toISOString().slice(0,10);
+      f._lastPriceDate=_today;
+      if(!Array.isArray(f.priceHistory))f.priceHistory=[];
+      const ph=f.priceHistory;
+      if(ph.length&&ph[ph.length-1].date===_today)ph[ph.length-1].close=price;
+      else ph.push({date:_today,close:price});
+      if(ph.length>60)f.priceHistory=ph.slice(-60);
       updated++;
     };
     state.holdings.forEach(g=>g.funds.forEach(apply));
@@ -467,6 +495,36 @@ function stageInfo(){
   return{stage,coef:STAGE_COEF[String(stage)]??0.6,pace:ATTACK_PACE[String(stage)]??0.15};
 }
 
+function ma(hist,n){if(!hist||hist.length<n)return null;const s=hist.slice(-n).reduce((a,b)=>a+b.close,0);return s/n;}
+function maState(f){
+  const h=f.priceHistory;if(!h||h.length<50)return null;
+  const p=h[h.length-1].close,m20=ma(h,20),m50=ma(h,50);
+  if(p<m20||p<m50)return{f:0,label:'线下观望'};
+  if(p>=m50&&m20>m50)return{f:0.8,label:'双线上'};
+  if(p>=m50&&m20<=m50)return{f:0.5,label:'单线强'};
+  if(p>=m20)return{f:0.25,label:'单线弱'};
+  return{f:0,label:'线下观望'};
+}
+function belowMaStreak(hist,maLen){
+  if(!hist||hist.length<maLen+1)return 0;
+  let cnt=0;
+  for(let i=hist.length-1;i>=maLen-1;i--){
+    const w=hist.slice(i-maLen+1,i+1);
+    const m=w.reduce((a,b)=>a+b.close,0)/maLen;
+    if(hist[i].close<m)cnt++;else break;
+  }
+  return cnt;
+}
+function breakAlerts(){
+  const out=[];
+  state.holdings.filter(g=>g.positionId==='tactical').forEach(g=>g.funds.forEach(f=>{
+    const h=f.priceHistory;if(!h||h.length<51)return;
+    if(belowMaStreak(h,50)>=2)out.push(`🚨 ${f.name} 连续2日收盘跌破MA50 → 战术仓减70%`);
+    else if(belowMaStreak(h,20)>=2)out.push(`🚨 ${f.name} 连续2日收盘跌破MA20 → 战术仓减30%`);
+  }));
+  return out;
+}
+
 /* 5/25混合再平衡带宽 */
 function bandHit(act,tg){
   const absd=Math.abs(act-tg);
@@ -478,12 +536,31 @@ function bandHit(act,tg){
 function sellSignals(){
   const out=[];
   state.holdings.forEach(g=>g.funds.forEach(f=>{
-    const proxy=PE_PROXY[f.code];if(!proxy)return;
+    const proxy=PE_PROXY[f.code]||COMMODITY_PROXY[f.code];if(!proxy)return;
     const pe=getPe(proxy);if(!pe||pe.pct==null)return;
+    const isCommodity=!PE_PROXY[f.code]&&!!COMMODITY_PROXY[f.code];
     const core=g.positionId==='core';
-    if(pe.pct>95)out.push({lv:'danger',txt:`🚨 ${f.name}（参照${pe.name} 分位${pe.pct}%）极端高估：${core?'核心仓暂停定投并分批减持；多指数同时>95%时总仓位降至50%以下':'止盈至少2/3，必要时清仓'}`});
-    else if(pe.pct>90)out.push({lv:'danger',txt:`🔴 ${f.name}（分位${pe.pct}%）>90%：${core?'核心仓不动但停买':'止盈2/3'}`});
-    else if(pe.pct>80)out.push({lv:'warn',txt:`🔶 ${f.name}（参照${pe.name} 分位${pe.pct}%）>80%：${core?'核心仓暂停定投（估值闸门已自动停买）':'止盈1/3，定投自动暂停'}`});
+    const tactical=g.positionId==='tactical';
+    // 商品（黄金/对冲）：按金价分位
+    if(isCommodity){
+      if(pe.pct>95)out.push({lv:'danger',txt:`🚨 ${f.name}（金价分位${pe.pct}%）极端高估：对冲仓减持2/3并暂停加仓`});
+      else if(pe.pct>90)out.push({lv:'danger',txt:`🔴 ${f.name}（金价分位${pe.pct}%）>90%：对冲仓减持1/3`});
+      else if(pe.pct>80)out.push({lv:'warn',txt:`🔶 ${f.name}（金价分位${pe.pct}%）>80%：暂停加仓`});
+      return;
+    }
+    // 战术仓：趋势优先——估值高只停买，主动减仓交给MA/破位（breakAlerts）
+    if(tactical){
+      const ms=maState(f);
+      if(pe.pct>80){
+        if(ms&&ms.f===0)out.push({lv:'danger',txt:`🚨 ${f.name}（参照${pe.name} 分位${pe.pct}%）高估且已跌破均线（${ms.label}）：止盈并降低战术仓敞口`});
+        else out.push({lv:'warn',txt:`🔶 ${f.name}（参照${pe.name} 分位${pe.pct}%）>80%：停止加仓，趋势未破不主动减（让利润奔跑）`});
+      }
+      return;
+    }
+    // 核心仓：估值分位逆周期减仓
+    if(pe.pct>95)out.push({lv:'danger',txt:`🚨 ${f.name}（参照${pe.name} 分位${pe.pct}%）极端高估：核心仓暂停定投并分批减持；多指数同时>95%时总仓位降至50%以下`});
+    else if(pe.pct>90)out.push({lv:'danger',txt:`🔴 ${f.name}（分位${pe.pct}%）>90%：核心仓不动但停买`});
+    else if(pe.pct>80)out.push({lv:'warn',txt:`🔶 ${f.name}（参照${pe.name} 分位${pe.pct}%）>80%：核心仓暂停定投（估值闸门已自动停买）`});
   }));
   return out;
 }
@@ -517,10 +594,44 @@ function anomalies(){
   return a;
 }
 
+function reconcile(f){
+  if(f.marketValue!=null&&f.marketValue<0)f.marketValue=0;
+  if(f.shares===0){f.marketValue=0;f.cost=0;f.profit=0;f._lastPrice=null;return;}
+  if(f.costUnit!=null&&f.shares!=null&&f.shares>0){
+    f.cost=Math.round(f.shares*f.costUnit*100)/100;
+  }
+  if(f.cost!=null&&f.marketValue!=null){
+    f.profit=Math.round((f.marketValue-f.cost)*100)/100;
+  }
+  if(f.shares!=null&&f.shares>0&&f.marketValue!=null){
+    f._lastPrice=Math.round(f.marketValue/f.shares*10000)/10000;
+  }
+}
+
 /* ---------- 行内编辑 ---------- */
 function findFund(id){
   for(const g of state.holdings){const f=g.funds.find(x=>x.id===id);if(f)return f;}
   return state.customFunds.find(x=>x.id===id)||null;
+}
+function findFundByCode(code){
+  for(const g of state.holdings){const f=g.funds.find(x=>x.code===code);if(f)return f;}
+  return state.customFunds.find(x=>x.code===code)||null;
+}
+function applyTxToHolding(tx){
+  const f=findFundByCode(tx.code);if(!f)return false;
+  const sh=(tx.shares!=null&&tx.shares>0)?tx.shares:(tx.nav>0?tx.amount/tx.nav:null);
+  if(tx.side==='买入'){
+    if(sh!=null)f.shares=(f.shares||0)+sh;
+    f.cost=(f.cost||0)+tx.amount;
+  }else{
+    if(sh!=null&&f.shares){
+      const ratio=Math.min(1,sh/f.shares);
+      f.cost=Math.round((f.cost||0)*(1-ratio)*100)/100;
+      f.shares=Math.max(0,f.shares-sh);
+    }
+  }
+  reconcile(f);
+  return true;
 }
 function delFund(id){
   for(const g of state.holdings){
@@ -586,42 +697,13 @@ function commitEdit(){
     const v=inp?parseFloat(inp.value):NaN;
     if(isFinite(v)&&v!==fund[field]){
       fund[field]=field==='targetRatio'?Math.max(0,v):v;
-      
-      // 编辑份数：重算总成本（如果 costUnit 有），再算盈亏
-      if(field==='shares'){
-        if(fund.costUnit!=null){
-          fund.cost=Math.round(v*fund.costUnit*100)/100;
-        }
-        if(fund.marketValue!=null&&fund.cost!=null){
-          fund.profit=Math.round((fund.marketValue-fund.cost)*100)/100;
-        }
-      }
-      // 编辑成本单价：重算总成本，再算盈亏
-      else if(field==='costUnit'){
-        if(fund.shares!=null){
-          fund.cost=Math.round(fund.shares*v*100)/100;
-        }
-        if(fund.marketValue!=null&&fund.cost!=null){
-          fund.profit=Math.round((fund.marketValue-fund.cost)*100)/100;
-        }
-      }
-      // 编辑市值：用总成本重算盈亏（份数不变）
-      else if(field==='marketValue'){
-        if(fund.cost!=null){
-          fund.profit=Math.round((v-fund.cost)*100)/100;
-        }
-      }
-      // 编辑盈亏：用市值重算总成本（不修改成本单价）
-      else if(field==='profit'){
-        if(fund.marketValue!=null){
+      if(field!=='holdProfit'&&field!=='targetRatio'){
+        // 旧数据无 costUnit/shares 真相源时，编辑盈亏反推成本
+        if(field==='profit'&&!(fund.costUnit!=null&&fund.shares!=null&&fund.shares>0)&&fund.marketValue!=null){
           fund.cost=Math.round((fund.marketValue-v)*100)/100;
         }
+        reconcile(fund);
       }
-      // 编辑持有收益：不联动（参考值）
-      else if(field==='holdProfit'){
-        // 不联动
-      }
-      
       flashTarget={fid:fund.id,f:field};
       persistSilent();
     }else renderAll();
@@ -662,6 +744,7 @@ function renderOverview(){
     const miss=ws.sGradeSectors.filter(s=>!held.includes(s));
     if(miss.length)dec+=`<div class="warnbox">👀 S级板块 <b>${miss.join('、')}</b> 当前无对应持仓——纳入观察池，若连续2周保持S级且大盘Stage≥2，可考虑用战术仓机动额度介入</div>`;
   }
+  breakAlerts().forEach(m=>{dec+=`<div class="dangerbox">${m}</div>`;});
   document.getElementById('ovDecision').innerHTML=dec||'<div class="okbox">今日无强制动作，按周定投纪律执行即可</div>';
 
   let dist='';
@@ -744,6 +827,7 @@ function fundHint(f){
 }
 
 function renderSignals(){
+  calcSectorStreaks();
   const ws=state.weeklySignals;
   if(!ws){document.getElementById('sgKpis').innerHTML='';document.getElementById('sgSectors').innerHTML='<div class="mut">尚未导入市场信号，请在「数据管理」导入含 weeklySignals 的JSON</div>';document.getElementById('sgWatch').innerHTML='';return;}
   const si=stageInfo();
@@ -797,15 +881,17 @@ function renderValuation(){
 
 function allocate(amount,maF,st,baseTotal){
   baseTotal=baseTotal||st.total;
+  const t=curTargets();
   const rows=[];
   state.holdings.forEach(g=>{
     if(g.positionId==='cash')return;
     g.funds.forEach(f=>{
       const gap=f.targetRatio/100*baseTotal-f.marketValue;
       let blocked=null,factor=1,score=null,note=[];
-      const proxy=PE_PROXY[f.code];const pe=proxy?getPe(proxy):null;
+      const proxy=PE_PROXY[f.code]||COMMODITY_PROXY[f.code];const pe=proxy?getPe(proxy):null;
+      const isCommodity=!PE_PROXY[f.code]&&!!COMMODITY_PROXY[f.code];
       if(pe&&pe.pct!=null){
-        if(pe.pct>80){blocked=`估值闸门：${pe.name}分位${pe.pct}%`;}
+        if(pe.pct>80){blocked=(isCommodity?'金价闸门：':'估值闸门：')+`${pe.name}分位${pe.pct}%`;}
         else if(pe.pct>60){factor=0.7;note.push('估值偏高×0.7');}
         else if(pe.pct<30){factor=1.2;note.push('估值低位×1.2');}
       }
@@ -817,17 +903,35 @@ function allocate(amount,maF,st,baseTotal){
           else note.push(`${sec}评分${score.toFixed(2)}加权`);
         }
       }
+      // 战术仓附加均线状态说明（需 priceHistory≥50 条）
+      if(g.positionId==='tactical'){const ms=maState(f);if(ms)note.push('MA:'+ms.label);}
       if(!blocked&&gap<=0)blocked='已达标，停买';
+      const pool=g.positionId==='tactical'?'tactical':'core';
       const w=blocked?0:gap*factor*(score!=null?(0.5+score):1);
-      rows.push({f,g:g.positionId,gap,blocked,w,note:note.join(' · ')});
+      rows.push({f,g:g.positionId,pool,gap,blocked,w,note:note.join(' · '),amount:0});
     });
   });
-  const W=rows.reduce((s,r)=>s+r.w,0);
-  rows.forEach(r=>{
-    let amt=W>0?amount*r.w/W:0;
-    if(r.g==='tactical')amt*=maF;
-    r.amount=Math.floor(amt/100)*100;
+  // 预算分池：按目标仓位比例切分（战术 vs 核心+对冲）
+  const tacticalTgt=t.tactical||0;
+  const coreTgt=(t.core||0)+(t.hedge||0);
+  const denom=tacticalTgt+coreTgt;
+  const tacticalBudget=denom>0?amount*tacticalTgt/denom:0;
+  const coreBudget=amount-tacticalBudget;
+  // 战术池先按 maF 缩减，被砍部分留存现金、不回流
+  const tacticalEff=tacticalBudget*maF;
+  const maHold=tacticalBudget-tacticalEff;
+  const pools=[
+    {budget:coreBudget,rs:rows.filter(r=>r.pool==='core')},
+    {budget:tacticalEff,rs:rows.filter(r=>r.pool==='tactical')}
+  ];
+  pools.forEach(p=>{
+    const W=p.rs.reduce((s,r)=>s+r.w,0);
+    p.rs.forEach(r=>{
+      const amt=W>0?p.budget*r.w/W:0;
+      r.amount=Math.floor(amt/100)*100;
+    });
   });
+  rows.maHold=Math.floor(maHold/100)*100;
   return rows;
 }
 function allocTable(rows){
@@ -852,7 +956,9 @@ function renderDCA(){
   if(tgIn>0&&tgIn>st.total)baseNote=`缺口按目标总资产 <b>${fmt(baseTotal)}</b> 计算（当前 ${fmt(st.total)}）。`;
   else if(tgIn>0&&tgIn<=st.total)baseNote=`目标总资产 ${fmt(tgIn)} 不高于当前总资产，已按当前总资产 ${fmt(st.total)} 计算。`;
   document.getElementById('dcaInfo').innerHTML=
-    `${baseNote}Stage ${si.stage}（系数×${si.coef}）→ 有效预算 <b>${fmt(eff)}</b>；战术仓另乘MA系数×${maF}。实际分配 <b>${fmt(sum)}</b>，留存现金 ${fmt(Math.max(0,budget-sum))}`;
+    `${baseNote}Stage ${si.stage}（系数×${si.coef}）→ 有效预算 <b>${fmt(eff)}</b>；战术仓另乘MA系数×${maF}。`+
+    `实际分配 <b>${fmt(sum)}</b>，留存现金 ${fmt(Math.max(0,budget-sum))}`+
+    ((rows.maHold>0)?`（其中战术仓因MA系数少买 <b>${fmt(rows.maHold)}</b>，未回流核心、转为留存现金）`:'');
   document.getElementById('dcaTable').innerHTML=allocTable(rows);
 
   const cashMV=st.groups.cash?.mv||0;
@@ -911,6 +1017,7 @@ document.getElementById('logBtn').onclick=()=>{
   const buys=lastWeeklyRows.filter(r=>r.amount>0);
   if(!buys.length){toast('当前无可执行买入');return;}
   buys.forEach(r=>state.transactions.unshift({date:today,code:r.f.code,name:r.f.name,side:'买入',amount:r.amount,shares:null,nav:null,note:'周定投'}));
+  buys.forEach(r=>applyTxToHolding({code:r.f.code,side:'买入',amount:r.amount,shares:null,nav:null}));
   persist(`已记录 ${buys.length} 笔买入到交易日志`);
 };
 document.getElementById('txAdd').onclick=()=>{
@@ -922,6 +1029,8 @@ document.getElementById('txAdd').onclick=()=>{
   if(a<=0&&sh>0&&nav>0)a=Math.round(sh*nav*100)/100;
   if(!d||!n||a<=0){toast('请填写日期、名称，金额可填写或由份额×净值算出');return;}
   state.transactions.unshift({date:d,code:c,name:n,side:s,amount:a,shares:sh>0?sh:null,nav:nav>0?nav:null,note});
+  const _ok=applyTxToHolding({code:c,side:s,amount:a,shares:sh>0?sh:null,nav:nav>0?nav:null});
+  if(!_ok)toast('已记流水；未找到代码 '+c+' 对应持仓，未回写');
   persist('已记录');
 };
 document.getElementById('saveBtn').onclick=()=>persist();
@@ -997,7 +1106,12 @@ async function syncFromGist(){
     if(!res.ok)throw new Error('HTTP '+res.status);
     const text=await res.text();
     const json=JSON.parse(text);
+    const prevStreaks=state?.sectorStreaks||{};
+    const prevStreakWeek=state?.lastStreakWeek;
     state=normalize(json);
+    state.sectorStreaks=prevStreaks;
+    state.lastStreakWeek=prevStreakWeek;
+    calcSectorStreaks();
     persist('✅ 已从 Gist 远程同步');
     loadAllocation();
   }catch(e){toast('同步失败：'+e.message);}
