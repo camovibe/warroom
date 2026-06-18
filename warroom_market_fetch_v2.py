@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-投资作战室 · 市场数据抓取脚本 v2.1（修复版）
+投资作战室 · 市场数据抓取脚本 v2.2（纯腾讯行情版）
 ===========================
-用途：每日抓取指数估值(PE/PB/分位) + 市场信号(TS/MC/Stage/板块评分)，
-      输出标准作战室 JSON 片段，可直接导入作战室「数据管理」页。
+用途：每日抓取指数估值 + 市场信号，使用腾讯行情实时涨跌幅计算动态板块评分。
 
 运行环境：Python 3.8+，优先 akshare（pip install akshare），降级 requests
 运行方式：
@@ -12,9 +11,9 @@
   python warroom_market_fetch_v2.py --cron   # 静默模式，适合定时任务
   python warroom_market_fetch_v2.py --pretty # 终端输出格式化 JSON
 
-输出文件：market_data_YYYY-MM-DD.json（可直接粘贴到作战室导入框）
+输出文件：market_data_YYYY-MM-DD.json
 
-作者：Kimi Work 修复整合版 v2.1
+作者：Kimi Work v2.2（纯腾讯行情，无需 akshare 历史数据）
 """
 
 import json, math, os, sys, argparse, hashlib, warnings, datetime, re
@@ -25,7 +24,6 @@ warnings.filterwarnings('ignore')
 
 # ==================== 配置区 ====================
 
-# 作战室 PE_PROXY 映射关系：{持仓代码: 估值指数代码}
 INDEX_PE_MAP = {
     "930841": {"name": "中证红利低波动", "index": "930841", "asset": "equity"},
     "930050": {"name": "中证A50", "index": "930050", "asset": "equity"},
@@ -44,7 +42,6 @@ INDEX_PE_MAP = {
     "513500": {"name": "标普500ETF", "index": "SPX", "asset": "equity"},
 }
 
-# 板块评分涉及的指数/ETF（用于计算 sectorScores）
 SECTOR_MAP = {
     "AI算力":      {"index": "930713", "etf": "159819"},
     "人形机器人":   {"index": "H30532", "etf": "562500"},
@@ -60,7 +57,6 @@ SECTOR_MAP = {
     "券商":        {"index": "399975", "etf": "512000"},
 }
 
-# 腾讯行情映射（ETF 代码 → 腾讯格式）
 TX_MAP = {
     '563020': 'sh563020', '159819': 'sz159819', '562500': 'sh562500',
     '512480': 'sh512480', '518880': 'sh518880', '513100': 'sh513100',
@@ -72,17 +68,14 @@ TX_MAP = {
     '512000': 'sh512000', '159232': 'sz159232',
 }
 
-# 历史数据天数
 HISTORY_DAYS = 250
 SECTOR_DAYS = 20
 
-# 自检阈值
 PE_VALID_RANGE = (0, 300)
 PB_VALID_RANGE = (0, 50)
 MAX_DAILY_CHANGE = 0.25
 MAX_DATA_STALE_DAYS = 1
 
-# 内置预存数据（作为降级备用）
 PRESTORED_PE = {
     "510300": {"pe": 13.65, "pb": 1.43, "pct": 64.73, "date": "2026-06-12"},
     "930050": {"pe": 14.2, "pb": 1.55, "pct": 45.0, "date": "2026-06-12"},
@@ -135,8 +128,8 @@ def compute_percentile(values: List[float], current: float) -> Optional[float]:
     return round((sum(1 for v in valid if v <= current) / n) * 100, 2)
 
 def compute_sector_score_from_change(change_pct: float) -> float:
-    """基于涨跌幅映射到 0-1 评分。"""
-    score = (change_pct + 0.20) / 0.40
+    """基于涨跌幅映射到 0-1 评分。日涨跌幅 -3%~+3% 映射到 0-1。"""
+    score = (change_pct + 0.03) / 0.06
     return round(max(0.0, min(1.0, score)), 3)
 
 def compute_gini(values: List[float]) -> Optional[float]:
@@ -226,8 +219,13 @@ def fetch_akshare_index_pe(symbol: str) -> Optional[Dict]:
         print_log(f"[WARN] akshare 获取 {symbol} PE 失败: {e}", silent=False)
         return None
 
-def fetch_tencent_prices(codes: List[str]) -> Dict[str, float]:
-    """通过腾讯接口获取ETF实时价格。"""
+# ========== 核心修复：fetch_tencent_prices 同时获取日涨跌幅 ==========
+
+def fetch_tencent_prices_with_change(codes: List[str]) -> Dict[str, Dict]:
+    """通过腾讯接口获取ETF实时价格 + 日涨跌幅。
+    
+    返回格式：{code: {"price": x, "prev_close": y, "change_pct": z}}
+    """
     import requests
     tx_map = {c: TX_MAP.get(c, ('sh' if c.startswith('5') else 'sz') + c) for c in codes}
     url = f"https://qt.gtimg.cn/q={','.join(tx_map.values())}"
@@ -239,7 +237,7 @@ def fetch_tencent_prices(codes: List[str]) -> Dict[str, float]:
         print_log(f"[WARN] 腾讯行情请求失败: {e}", silent=False)
         return {}
     
-    prices = {}
+    result = {}
     for line in text.strip().split(';'):
         if not line.strip():
             continue
@@ -248,15 +246,30 @@ def fetch_tencent_prices(codes: List[str]) -> Dict[str, float]:
             continue
         raw_code = m.group(2)
         parts = m.group(3).split('~')
-        if len(parts) > 3:
+        # 腾讯接口格式：~名称~代码~当前价~昨收~今开~...
+        if len(parts) > 5:
             for c, tx in tx_map.items():
                 if tx.endswith(raw_code):
-                    prices[c] = float(parts[3])
+                    try:
+                        price = float(parts[3])      # 当前价
+                        prev_close = float(parts[4])  # 昨收
+                        change_pct = (price - prev_close) / prev_close if prev_close > 0 else 0
+                        result[c] = {
+                            "price": price,
+                            "prev_close": prev_close,
+                            "change_pct": change_pct,
+                        }
+                    except (ValueError, IndexError, ZeroDivisionError):
+                        pass
                     break
-    return prices
+    return result
+
+# 保留旧接口兼容
+def fetch_tencent_prices(codes: List[str]) -> Dict[str, float]:
+    info = fetch_tencent_prices_with_change(codes)
+    return {k: v["price"] for k, v in info.items()}
 
 def fetch_sector_history_akshare(symbol: str, days: int = 60) -> List[float]:
-    """获取板块指数历史收盘价列表。"""
     hist = fetch_akshare_index_history(symbol, days=days + 10)
     if not hist:
         return []
@@ -278,14 +291,15 @@ def build_pe_data(silent: bool = False) -> List[Dict]:
         print_log(f"抓取 {code} ({name}) ...", silent=silent)
         
         pe = pb = pct = None
-        data_date = _today()  # 关键修复：默认今天，不再回退旧日期
+        data_date = _today()
         status = "ok"
         notes = ""
         sources = []
         
         if asset == "commodity":
-            prices = fetch_tencent_prices([code])
-            price = prices.get(code)
+            prices = fetch_tencent_prices_with_change([code])
+            price_info = prices.get(code)
+            price = price_info["price"] if price_info else None
             
             if has_ak:
                 hist = fetch_sector_history_akshare(symbol, days=HISTORY_DAYS)
@@ -333,7 +347,7 @@ def build_pe_data(silent: bool = False) -> List[Dict]:
             pe = preset.get("pe")
             pb = preset.get("pb")
             pct = preset.get("pct")
-            data_date = _today()  # 关键修复：回退也标今天
+            data_date = _today()
             status = "stale"
             sources.append("prestored")
         else:
@@ -359,17 +373,19 @@ def build_pe_data(silent: bool = False) -> List[Dict]:
     return pe_data
 
 
+# ========== 核心修复：build_sector_scores 使用腾讯日涨跌幅 ==========
+
 def build_sector_scores(silent: bool = False) -> Dict[str, float]:
-    """构建板块评分（sectorScores）——核心修复：使用腾讯行情实时价格 vs 20日均价。"""
+    """构建板块评分（sectorScores）——核心修复：使用腾讯行情日涨跌幅，无需 akshare 历史数据。"""
     sector_scores = {}
     has_ak = _try_import_akshare()
     
-    # 获取所有 ETF 的当前价格（腾讯行情）
+    # 获取所有 ETF 的当前价格 + 日涨跌幅（腾讯行情）
     all_etfs = [cfg.get("etf") for cfg in SECTOR_MAP.values() if cfg.get("etf")]
-    tencent_prices = fetch_tencent_prices(all_etfs) if all_etfs else {}
-    print_log(f"腾讯行情获取到 {len(tencent_prices)} 只 ETF 价格", silent=silent)
+    price_info = fetch_tencent_prices_with_change(all_etfs) if all_etfs else {}
+    print_log(f"腾讯行情获取到 {len(price_info)} 只 ETF 价格", silent=silent)
     
-    # 获取历史数据（用于计算 20 日均价）
+    # 获取历史数据（备用，如果 akshare 可用）
     history_map = {}
     if has_ak:
         for sector, cfg in SECTOR_MAP.items():
@@ -383,18 +399,13 @@ def build_sector_scores(silent: bool = False) -> Dict[str, float]:
         etf = cfg.get("etf")
         score = None
         
-        # 优先：用腾讯行情实时价格 vs 20日均价计算动态涨跌幅
-        if etf and etf in tencent_prices:
-            price = tencent_prices[etf]
-            hist = history_map.get(sector, [])
-            if hist and len(hist) >= SECTOR_DAYS:
-                ma20 = sum(hist[-SECTOR_DAYS:]) / SECTOR_DAYS
-                if ma20 > 0:
-                    change_pct = (price - ma20) / ma20
-                    score = compute_sector_score_from_change(change_pct)
-                    print_log(f"  → {sector}: 腾讯价格 {price} vs MA20 {ma20:.2f}, 涨跌幅 {change_pct*100:.1f}%, 评分 {score}", silent=silent)
+        # 方案1：腾讯行情日涨跌幅（最优先，无需历史数据）
+        if etf and etf in price_info:
+            change_pct = price_info[etf]["change_pct"]
+            score = compute_sector_score_from_change(change_pct)
+            print_log(f"  → {sector}: 腾讯日涨跌 {change_pct*100:.2f}%, 评分 {score}", silent=silent)
         
-        # 备用：纯历史数据评分（akshare 获取的指数历史）
+        # 方案2：历史数据 MA 对比（akshare 备用）
         if score is None and sector in history_map:
             hist = history_map[sector]
             if len(hist) >= SECTOR_DAYS + 1:
@@ -403,9 +414,9 @@ def build_sector_scores(silent: bool = False) -> Dict[str, float]:
                 if start_price > 0:
                     change_pct = (end_price - start_price) / start_price
                     score = compute_sector_score_from_change(change_pct)
-                    print_log(f"  → {sector}: 纯历史评分 {score}", silent=silent)
+                    print_log(f"  → {sector}: 历史对比评分 {score}", silent=silent)
         
-        # 降级：预存估算（极少触发）
+        # 方案3：降级预存（极少触发）
         if score is None:
             preset_scores = {
                 "AI算力": 0.733, "人形机器人": 0.588, "半导体": 0.84,
@@ -414,52 +425,65 @@ def build_sector_scores(silent: bool = False) -> Dict[str, float]:
                 "央企价值": 0.415, "黄金": 0.347, "券商": 0.322,
             }
             score = preset_scores.get(sector, 0.5)
-            print_log(f"  → {sector}: 预存评分 {score}（无实时数据）", silent=silent)
+            print_log(f"  → {sector}: 预存评分 {score}（无数据）", silent=silent)
         
         sector_scores[sector] = score
     
     return sector_scores
 
 
+# ========== 核心修复：build_weekly_signals 使用腾讯日涨跌幅 ==========
+
 def build_weekly_signals(sector_scores: Dict[str, float], silent: bool = False) -> Dict:
-    """构建 weeklySignals（市场信号）——核心修复：用腾讯行情实时价格计算动态 TS。"""
-    # 用腾讯行情获取沪深300最新价
-    tencent_prices = fetch_tencent_prices(["510300"])
-    hs300_price = tencent_prices.get("510300")
+    """构建 weeklySignals（市场信号）——核心修复：用腾讯行情沪深300日涨跌幅计算动态 TS。"""
+    # 获取沪深300的实时价格 + 日涨跌幅
+    hs300_info = fetch_tencent_prices_with_change(["510300"])
+    hs300_data = hs300_info.get("510300")
+    hs300_price = hs300_data["price"] if hs300_data else None
+    hs300_change = hs300_data["change_pct"] if hs300_data else None
     
     ts_raw = None
     has_ak = _try_import_akshare()
     
+    # 方案1：akshare 历史分位（优先）
     if has_ak:
         hs300_history = fetch_akshare_index_history("000300", days=HISTORY_DAYS)
         if hs300_history:
             closes = [h["close"] for h in hs300_history if h.get("close", 0) > 0]
             if closes:
-                # 关键修复：用腾讯最新价替换历史最后一个收盘价
                 if hs300_price:
                     closes[-1] = hs300_price
-                    print_log(f"沪深300 历史最新价被腾讯实时价替换: {hs300_price}", silent=silent)
                 ts_raw = compute_percentile(closes, closes[-1])
     
+    # 方案2：基于日涨跌幅映射（核心修复，无需 akshare）
+    if ts_raw is None and hs300_change is not None:
+        # 日涨跌幅映射到 TS_raw (0-100)
+        # -3% → 10, 0% → 43.6, +3% → 77
+        ts_raw = 43.6 + hs300_change * 1000
+        ts_raw = max(0, min(100, ts_raw))
+        print_log(f"沪深300 日涨跌 {hs300_change*100:.2f}%, 映射 TS_raw={ts_raw}", silent=silent)
+    
+    # 方案3：基于板块评分均值
     if ts_raw is None and sector_scores:
         avg_score = sum(sector_scores.values()) / len(sector_scores)
         ts_raw = avg_score * 100
     
+    # 方案4：默认
     if ts_raw is None:
         ts_raw = 43.6
     
     ts = round(ts_raw / 100, 3) if ts_raw else 0.436
     
-    # 计算 MC（主线集中度）
+    # 计算 MC（主线集中度）——修复：分母从 100 改为 1
     if sector_scores:
         scores = list(sector_scores.values())
         all_avg = sum(scores) / len(scores)
         top3 = sorted(scores, reverse=True)[:3]
         s_avg = sum(top3) / 3 if top3 else 0
-        if 100 - all_avg > 0:
-            mc = (s_avg - all_avg) / (100 - all_avg)
-        else:
-            mc = 0
+        # 关键修复：分母改为 (1 - all_avg) 而非 (100 - all_avg)
+        denominator = max(1 - all_avg, 0.001)
+        mc = (s_avg - all_avg) / denominator
+        mc = max(0, min(1, mc))  # 限制在 0-1
     else:
         mc = 0.888
     
@@ -504,7 +528,7 @@ def build_weekly_signals(sector_scores: Dict[str, float], silent: bool = False) 
         "extremeFlag": extreme,
         "sectorScores": sector_scores,
         "sGradeSectors": s_grade,
-        "engineVersion": "4.3-auto-v2.1",
+        "engineVersion": "4.3-auto-v2.2",
     }
     
     print_log(f"weeklySignals → TS_raw={ts_raw}, MC={mc}, Stage={stage}, Mainline={mainline}", silent=silent)
@@ -577,14 +601,14 @@ def main():
     
     if not silent:
         print("=" * 60)
-        print("投资作战室 · 市场数据抓取 v2.1")
+        print("投资作战室 · 市场数据抓取 v2.2")
         print(f"日期: {_today()}")
         print("=" * 60)
     
     # 1. 构建 PE 数据
     pe_data = build_pe_data(silent=silent)
     
-    # 2. 构建板块评分（核心：使用腾讯行情动态计算）
+    # 2. 构建板块评分（核心：使用腾讯行情日涨跌幅，无需历史数据）
     sector_scores = build_sector_scores(silent=silent)
     
     # 3. 构建市场信号
@@ -595,7 +619,7 @@ def main():
         "peData": pe_data,
         "weeklySignals": weekly_signals,
         "generatedAt": datetime.datetime.now().isoformat(),
-        "generator": "warroom_market_fetch_v2.py v2.1",
+        "generator": "warroom_market_fetch_v2.py v2.2",
     }
     
     # 5. 保存文件
