@@ -247,7 +247,8 @@ def fetch_tencent_prices_with_change(codes: List[str]) -> Dict[str, Dict]:
         raw_code = m.group(2)
         parts = m.group(3).split('~')
         # 腾讯接口格式：~名称~代码~当前价~昨收~今开~...
-        if len(parts) > 5:
+        # 关键修复：len(parts) > 4 即可获取 price(parts[3]) 和 prev_close(parts[4])
+        if len(parts) > 4:
             for c, tx in tx_map.items():
                 if tx.endswith(raw_code):
                     try:
@@ -259,9 +260,12 @@ def fetch_tencent_prices_with_change(codes: List[str]) -> Dict[str, Dict]:
                             "prev_close": prev_close,
                             "change_pct": change_pct,
                         }
-                    except (ValueError, IndexError, ZeroDivisionError):
-                        pass
+                    except (ValueError, IndexError, ZeroDivisionError) as e:
+                        # 调试：打印异常但不中断
+                        print(f"[DEBUG] {c}({tx}) 解析失败: {e}, parts={parts[:6]}")
                     break
+    # 调试：强制打印获取结果数量（即使 silent 模式）
+    print(f"[DEBUG] 腾讯行情最终获取到 {len(result)} 只 ETF: {list(result.keys())}")
     return result
 
 # 保留旧接口兼容
@@ -383,7 +387,8 @@ def build_sector_scores(silent: bool = False) -> Dict[str, float]:
     # 获取所有 ETF 的当前价格 + 日涨跌幅（腾讯行情）
     all_etfs = [cfg.get("etf") for cfg in SECTOR_MAP.values() if cfg.get("etf")]
     price_info = fetch_tencent_prices_with_change(all_etfs) if all_etfs else {}
-    print_log(f"腾讯行情获取到 {len(price_info)} 只 ETF 价格", silent=silent)
+    # 强制打印调试信息（即使 silent 模式）
+    print(f"[DEBUG] build_sector_scores: 请求 {len(all_etfs)} 只 ETF, 获取到 {len(price_info)} 只")
     
     # 获取历史数据（备用，如果 akshare 可用）
     history_map = {}
