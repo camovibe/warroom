@@ -224,45 +224,47 @@ def fetch_akshare_index_pe(symbol: str) -> Optional[Dict]:
 def fetch_tencent_prices_with_change(codes: List[str]) -> Dict[str, Dict]:
     """通过腾讯接口获取ETF实时价格 + 日涨跌幅。
     
+    关键修复：GitHub Actions 服务器对批量请求有限制，改为单只循环请求。
     返回格式：{code: {"price": x, "prev_close": y, "change_pct": z}}
     """
     import requests
-    tx_map = {c: TX_MAP.get(c, ('sh' if c.startswith('5') else 'sz') + c) for c in codes}
-    url = f"https://qt.gtimg.cn/q={','.join(tx_map.values())}"
-    try:
-        r = requests.get(url, timeout=15)
-        r.encoding = 'gbk'
-        text = r.text
-    except Exception as e:
-        print_log(f"[WARN] 腾讯行情请求失败: {e}", silent=False)
-        return {}
-    
+    session = requests.Session()
     result = {}
-    for line in text.strip().split(';'):
-        if not line.strip():
+    for code in codes:
+        tx = TX_MAP.get(code, ('sh' if code.startswith('5') else 'sz') + code)
+        url = f"https://qt.gtimg.cn/q={tx}"
+        try:
+            r = session.get(url, timeout=15)
+            r.encoding = 'gbk'
+            text = r.text
+        except Exception as e:
+            print(f"[DEBUG] 腾讯行情 {code} 请求失败: {e}")
             continue
-        m = re.match(r'v_([a-z]+(\d+))="([^"]*)"', line)
-        if not m:
-            continue
-        raw_code = m.group(2)
-        parts = m.group(3).split('~')
-        # 腾讯接口格式：~名称~代码~当前价~昨收~今开~...
-        # 关键修复：len(parts) > 4 即可获取 price(parts[3]) 和 prev_close(parts[4])
-        if len(parts) > 4:
-            for c, tx in tx_map.items():
+        
+        for line in text.strip().split(';'):
+            if not line.strip():
+                continue
+            m = re.match(r'v_([a-z]+(\d+))="([^"]*)"', line)
+            if not m:
+                continue
+            raw_code = m.group(2)
+            parts = m.group(3).split('~')
+            # 腾讯接口格式：~名称~代码~当前价~昨收~今开~...
+            # 关键修复：len(parts) > 4 即可获取 price(parts[3]) 和 prev_close(parts[4])
+            if len(parts) > 4:
                 if tx.endswith(raw_code):
                     try:
                         price = float(parts[3])      # 当前价
                         prev_close = float(parts[4])  # 昨收
                         change_pct = (price - prev_close) / prev_close if prev_close > 0 else 0
-                        result[c] = {
+                        result[code] = {
                             "price": price,
                             "prev_close": prev_close,
                             "change_pct": change_pct,
                         }
                     except (ValueError, IndexError, ZeroDivisionError) as e:
                         # 调试：打印异常但不中断
-                        print(f"[DEBUG] {c}({tx}) 解析失败: {e}, parts={parts[:6]}")
+                        print(f"[DEBUG] {code}({tx}) 解析失败: {e}, parts={parts[:6]}")
                     break
     # 调试：强制打印获取结果数量（即使 silent 模式）
     print(f"[DEBUG] 腾讯行情最终获取到 {len(result)} 只 ETF: {list(result.keys())}")
