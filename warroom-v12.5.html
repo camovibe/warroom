@@ -461,14 +461,14 @@ async function refreshQuotes(){
       const hasShares=f.shares!=null&&isFinite(Number(f.shares))&&Number(f.shares)>0;
       const shares=hasShares?Number(f.shares):(f._lastPrice>0?f.marketValue/f._lastPrice:0);
       if(shares<=0)return;
-      let cost;
-      if(f.costUnit!=null&&shares>0){cost=Math.round(shares*f.costUnit*100)/100;}
-      else if(f.cost!=null){cost=f.cost;}
-      else{cost=f.marketValue-f.profit;}
+      // 更新市值和最新价（不覆盖用户手填的累计盈亏 profit）
       f.marketValue=Math.round(shares*price*100)/100;
-      f.profit=Math.round((f.marketValue-cost)*100)/100;
       f._lastPrice=price;
       f._lastPriceDate=_today;
+      // 自动计算持有收益（当前持仓浮动盈亏）
+      if(f.cost!=null){
+        f.holdProfit=Math.round((f.marketValue-f.cost)*100)/100;
+      }
       if(!Array.isArray(f.priceHistory))f.priceHistory=[];
       const ph=f.priceHistory;
       if(ph.length&&ph[ph.length-1].date===_today)ph[ph.length-1].close=price;
@@ -608,14 +608,17 @@ function anomalies(){
 
 function reconcile(f){
   if(f.marketValue!=null&&f.marketValue<0)f.marketValue=0;
-  if(f.shares===0){f.marketValue=0;f.cost=0;f.profit=0;f._lastPrice=null;return;}
-  if(f.costUnit!=null&&f.shares!=null&&f.shares>0){
+  if(f.shares===0){f.marketValue=0;f.cost=0;f.profit=0;f.holdProfit=0;f._lastPrice=null;return;}
+  // cost 真相源：手填 cost 优先；仅在缺失时才用 costUnit*shares 反推
+  if(f.cost==null&&f.costUnit!=null&&f.shares!=null&&f.shares>0){
     f.cost=Math.round(f.shares*f.costUnit*100)/100;
   }
+  // 持有收益（当前持仓浮动盈亏）始终自动计算
   if(f.cost!=null&&f.marketValue!=null){
-    f.profit=Math.round((f.marketValue-f.cost)*100)/100;
+    f.holdProfit=Math.round((f.marketValue-f.cost)*100)/100;
   }
-  if(f.shares!=null&&f.shares>0&&f.marketValue!=null){
+  // _lastPrice 仅在缺失时反推，不覆盖用户手动维护的值
+  if(f._lastPrice==null&&f.shares!=null&&f.shares>0&&f.marketValue!=null){
     f._lastPrice=Math.round(f.marketValue/f.shares*10000)/10000;
   }
 }
