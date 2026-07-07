@@ -302,13 +302,13 @@ function normalize(raw){
     const shares=(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null;
     const costUnit=(f.costUnit!=null&&isFinite(Number(f.costUnit)))?Number(f.costUnit):null;
     let cost=(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null;
-    // 如果 costUnit 和 shares 都有，自动计算总成本（摊薄成本法）
-    if(costUnit!=null&&shares!=null){
-      cost=Math.round(shares*costUnit*100)/100;
-    }
-    // 如果 cost 缺失但有市值和盈亏，自动推算（向后兼容旧数据）
+    // 如果 cost 仍缺失但有市值和盈亏，优先用盈亏反推（利润是手填累计盈亏，更可信）
     if(cost==null&&marketValue!=null&&profit!=null){
       cost=Math.round((marketValue-profit)*100)/100;
+    }
+    // 如果 cost 仍缺失且 costUnit 和 shares 都有，自动计算总成本（摊薄成本法）
+    if(cost==null&&costUnit!=null&&shares!=null){
+      cost=Math.round(shares*costUnit*100)/100;
     }
     return{
       id:f.id||('f'+Math.random().toString(36).slice(2)),
@@ -718,8 +718,8 @@ function commitEdit(){
           fund.marketValue=Math.round(fund.shares*v*100)/100;
           fund._lastPriceDate=new Date().toISOString().slice(0,10);
         }
-        // 旧数据无 costUnit/shares 真相源时，编辑盈亏反推成本
-        if(field==='profit'&&!(fund.costUnit!=null&&fund.shares!=null&&fund.shares>0)&&fund.marketValue!=null){
+        // 编辑盈亏时，始终用 marketValue - profit 反推成本（profit 是手填累计盈亏，更可信）
+        if(field==='profit'&&fund.marketValue!=null){
           fund.cost=Math.round((fund.marketValue-v)*100)/100;
         }
         reconcile(fund);
