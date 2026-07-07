@@ -678,8 +678,8 @@ function edCell(f,field,display,extraCls){
 function openEdit(cell){
   const fund=findFund(cell.dataset.fid);if(!fund)return;
   const field=cell.dataset.f;
-  const isText=field==='name'||field==='code';
-  cell.innerHTML=`<input class="cellinp" type="${isText?'text':'number'}" ${isText?'':`step="${field==='costUnit'?'0.0001':'0.01'}"`} value="${esc(fund[field])}">`;
+  const isText=field==='name'||field==='code'||field==='_lastPriceDate';
+  cell.innerHTML=`<input class="cellinp" type="${isText?'text':'number'}" ${isText?'':`step="${field==='costUnit'||field==='_lastPrice'?'0.0001':'0.01'}"`} value="${esc(fund[field]??'')}">`;
   const inp=cell.querySelector('input');
   editing={cell,fund,field};
   inp.focus();inp.select();
@@ -709,7 +709,12 @@ function commitEdit(){
     const v=inp?parseFloat(inp.value):NaN;
     if(isFinite(v)&&v!==fund[field]){
       fund[field]=field==='targetRatio'?Math.max(0,v):v;
-      if(field!=='holdProfit'&&field!=='targetRatio'){
+      if(field!=='holdProfit'&&field!=='targetRatio'&&field!=='_lastPriceDate'){
+        // 编辑最新净值：自动更新市值和盈亏
+        if(field==='_lastPrice'&&fund.shares!=null&&fund.shares>0){
+          fund.marketValue=Math.round(fund.shares*v*100)/100;
+          fund._lastPriceDate=new Date().toISOString().slice(0,10);
+        }
         // 旧数据无 costUnit/shares 真相源时，编辑盈亏反推成本
         if(field==='profit'&&!(fund.costUnit!=null&&fund.shares!=null&&fund.shares>0)&&fund.marketValue!=null){
           fund.cost=Math.round((fund.marketValue-v)*100)/100;
@@ -788,6 +793,8 @@ function renderOverview(){
       rows+=`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}
         ${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}
         ${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}
+        ${edCell(f,'_lastPrice',f._lastPrice!=null?f._lastPrice.toFixed(4):'-','mut')}
+        ${edCell(f,'_lastPriceDate',f._lastPriceDate||'-','mut')}
         ${edCell(f,'marketValue',fmt(f.marketValue))}
         ${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}
         ${edCell(f,'holdProfit',f.holdProfit!=null?sign(f.holdProfit):'-',pnlCls(f.holdProfit))}
@@ -798,11 +805,11 @@ function renderOverview(){
         <td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`;
     });
   });
-  document.getElementById('ovFunds').innerHTML=`<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>市值</th><th>盈亏</th><th>持有收益</th><th>实际%</th><th>目标%</th><th>缺口</th><th>信号提示</th><th>操作</th></tr>${rows}</table>`;
+  document.getElementById('ovFunds').innerHTML=`<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>盈亏</th><th>持有收益</th><th>实际%</th><th>目标%</th><th>缺口</th><th>信号提示</th><th>操作</th></tr>${rows}</table>`;
 
   document.getElementById('ovCustom').innerHTML=state.customFunds.length?
-    `<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>市值</th><th>盈亏</th><th>持有收益</th><th>占总资产</th><th>操作</th></tr>${
-      state.customFunds.map(f=>`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}${edCell(f,'marketValue',fmt(f.marketValue))}${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}${edCell(f,'holdProfit',f.holdProfit!=null?sign(f.holdProfit):'-',pnlCls(f.holdProfit))}<td>${(f.marketValue/st.total*100).toFixed(1)}%</td><td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`).join('')
+    `<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>盈亏</th><th>持有收益</th><th>占总资产</th><th>操作</th></tr>${
+      state.customFunds.map(f=>`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}${edCell(f,'_lastPrice',f._lastPrice!=null?f._lastPrice.toFixed(4):'-','mut')}${edCell(f,'_lastPriceDate',f._lastPriceDate||'-','mut')}${edCell(f,'marketValue',fmt(f.marketValue))}${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}${edCell(f,'holdProfit',f.holdProfit!=null?sign(f.holdProfit):'-',pnlCls(f.holdProfit))}<td>${(f.marketValue/st.total*100).toFixed(1)}%</td><td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`).join('')
     }</table>`:'<div class="mut">无</div>';
 }
 
