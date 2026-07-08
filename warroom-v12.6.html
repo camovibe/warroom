@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>投资作战室 v12.6</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--mut:#8b949e;--blue:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--purple:#bc8cff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.6}
+header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+h1{font-size:18px}
+.badge{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:1px 8px}
+nav{display:flex;gap:4px;overflow-x:auto;padding:8px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+nav button{flex:none;background:none;border:1px solid transparent;color:var(--mut);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;white-space:nowrap}
+nav button.on{color:var(--txt);background:var(--card);border-color:var(--line)}
+main{max-width:980px;margin:0 auto;padding:14px}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h3{font-size:14px;margin-bottom:10px}
+.grid{display:grid;gap:10px;margin-bottom:14px}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:640px){.g4{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi .v{font-size:19px;font-weight:700;margin-top:2px}
+.kpi .s{font-size:11px;color:var(--mut)}
+.pos{color:var(--red)}.neg{color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:500}
+.tablewrap{overflow-x:auto}
+.bar{height:8px;background:#21262d;border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:8px;border:1px solid var(--line);color:var(--mut);margin-left:4px}
+.tag.hot{color:var(--red);border-color:var(--red)}
+.tag.ok{color:var(--green);border-color:var(--green)}
+.tag.warn{color:var(--yellow);border-color:var(--yellow)}
+.tag.s{color:var(--purple);border-color:var(--purple)}
+.tag.a{color:var(--green);border-color:var(--green)}
+.tag.b{color:var(--blue);border-color:var(--blue)}
+.tag.c{color:var(--yellow);border-color:var(--yellow)}
+.tag.d{color:var(--mut);border-color:var(--mut)}
+input,select,textarea,.btn{background:#0d1117;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px 10px;font-size:13px}
+textarea{width:100%;min-height:110px;font-family:monospace}
+.btn{cursor:pointer;display:inline-block}
+.btn.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.mut{color:var(--mut);font-size:12px}
+.warnbox{border-left:3px solid var(--yellow);padding:8px 10px;background:rgba(210,153,34,.08);border-radius:6px;margin-bottom:8px;font-size:13px}
+.okbox{border-left:3px solid var(--green);padding:8px 10px;background:rgba(63,185,80,.08);border-radius:6px;margin-bottom:8px;font-size:13px}
+.dangerbox{border-left:3px solid var(--red);padding:8px 10px;background:rgba(248,81,73,.08);border-radius:6px;margin-bottom:8px;font-size:13px}
+.infobox{border-left:3px solid var(--blue);padding:8px 10px;background:rgba(88,166,255,.08);border-radius:6px;margin-bottom:8px;font-size:13px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f6feb;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:99}
+.toast.on{opacity:1}
+.del{color:var(--red);cursor:pointer;border:none;background:none;font-size:13px}
+.rule{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px}
+.rule b{font-size:14px}
+td.ed{cursor:text;position:relative}
+td.ed:hover{box-shadow:inset 0 0 0 1px var(--line);border-radius:5px}
+td.ed:hover::after{content:'✎';font-size:10px;color:var(--mut);margin-left:3px;opacity:.7}
+.cellinp{width:88px;padding:1px 5px;font-size:13px;text-align:right;border:1px solid var(--blue);border-radius:5px;background:#0d1117;color:var(--txt);font-family:inherit;appearance:textfield;-moz-appearance:textfield}
+.cellinp::-webkit-outer-spin-button,.cellinp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+@keyframes cellflash{0%{background:rgba(63,185,80,.35)}100%{background:transparent}}
+td.flash{animation:cellflash .9s ease-out}
+.modalback{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:14px}
+.modalback.on{display:flex}
+.modalbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;width:100%;max-width:360px}
+.modalbox h3{margin-bottom:12px}
+.modalbox label{display:block;margin-bottom:10px;font-size:13px;color:var(--mut)}
+.modalbox input,.modalbox select{width:100%;margin-top:3px}
+.modalrow{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.modalerr{color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔️ 投资作战室 <span class="badge">v12.6 · 三字段解耦+记账资金守恒+信号全覆盖</span></h1>
+  <span class="mut" id="hdStat"></span>
+  <button class="btn" id="refreshBtn" title="从腾讯财经刷新有份额的ETF最新价">🔄 刷新行情</button>
+  <button class="btn primary" id="syncBtn" title="从 GitHub Gist 远程同步最新 portfolio">🔄 远程同步</button>
+</header>
+<nav id="nav">
+  <button data-t="overview" class="on">📊 仓位总览</button>
+  <button data-t="signals">📡 市场信号</button>
+  <button data-t="dca">🐷 定投分配</button>
+  <button data-t="valuation">🎯 估值与止盈</button>
+  <button data-t="rules">📋 规则速查</button>
+  <button data-t="log">📝 交易日志</button>
+  <button data-t="data">💾 数据管理</button>
+</nav>
+<main>
+
+<section id="tab-overview" class="on">
+  <div id="ovKpis" class="grid g4"></div>
+  <div class="card"><h3>🎯 今日决策摘要</h3><div id="ovDecision"></div></div>
+  <div class="card"><h3>仓位分布（实线=实际 · 虚线=目标）</h3><div id="ovDist"></div></div>
+  <div id="ovWarn"></div>
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>持仓明细 <span class="mut">点击名称/代码/市值/盈亏/目标%可直接编辑 · Enter保存 · Tab跳下一格 · Esc取消</span></h3><button class="btn" onclick="openAddModal('holdings')">＋ 添加基金</button></div><div id="ovFunds" class="tablewrap"></div></div>
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>计划外资产（未纳入目标体系）</h3><button class="btn" onclick="openAddModal('custom')">＋ 添加</button></div><div id="ovCustom" class="tablewrap"></div></div>
+</section>
+
+<section id="tab-signals">
+  <div id="sgKpis" class="grid g4"></div>
+  <div class="card"><h3>板块强度评分（sector_scores）</h3><div id="sgSectors"></div></div>
+  <div id="sgWatch"></div>
+</section>
+
+<section id="tab-dca">
+  <div class="card"><h3>🧮 本周定投计算器（纪律层 · 核心仓逆周期 / 战术仓看MA）</h3>
+    <div class="row">
+      <label>本周预算 <input id="wkBudget" type="number" value="5000" style="width:110px"></label>
+      <label>目标总资产 <input id="tgTotal" type="number" placeholder="留空=按当前" style="width:130px"></label>
+      <label>战术仓MA状态
+        <select id="maSel">
+          <option value="0.8">🟢 双线上 ×80%</option>
+          <option value="0.5">🔵 单线强 ×50%</option>
+          <option value="0.25">🟡 单线弱 ×25%</option>
+          <option value="0">🔴 线下观望 ×0%</option>
+        </select>
+      </label>
+      <button class="btn primary" id="calcBtn">重新计算</button>
+      <button class="btn" id="logBtn">✅ 按此买入并记入日志</button>
+    </div>
+    <div id="dcaInfo" class="mut" style="margin-bottom:8px"></div>
+    <div id="dcaTable" class="tablewrap"></div>
+  </div>
+  <div class="card"><h3>⚔️ 本月进攻计划（大额建仓层 · 基于Stage与现金缺口）</h3>
+    <div id="atkInfo"></div>
+    <div id="atkTable" class="tablewrap"></div>
+  </div>
+</section>
+
+<section id="tab-valuation">
+  <div class="card"><h3>🚨 止盈/暂停信号（基于持仓与PE分位联动）</h3><div id="vlSignals"></div></div>
+  <div class="card"><h3>📊 PE估值数据 <span class="mut" id="vlDate"></span></h3><div id="vlTable" class="tablewrap"></div>
+    <div class="mut" style="margin-top:8px">颜色规则：分位&gt;80% 红（止盈区）· 60-80% 黄（谨慎区）· &lt;30% 绿（加码区）</div>
+  </div>
+</section>
+
+<section id="tab-rules">
+  <div class="card"><h3>📈 MA战术建仓速查（仅战术仓⚔️，核心仓🛡️不随均线动）</h3>
+    <div class="rule">🟢 <b>双线上</b>（站稳50MA + 20MA在50MA上方）→ 投入计划金额的 <b>80%</b></div>
+    <div class="rule">🔵 <b>单线强</b>（站稳50MA，未金叉）→ 投入 <b>50%</b></div>
+    <div class="rule">🟡 <b>单线弱</b>（仅站20MA）→ 投入 <b>25%</b></div>
+    <div class="rule">🔴 <b>线下观望</b>（跌破20MA或50MA）→ 投入 <b>0%</b>，等待信号</div>
+    <div class="mut">Stage修正系数：Stage 3 ×1.2 ｜ Stage 2 ×1.0 ｜ Stage 1.5 ×0.6 ｜ Stage 1 ×0.3 ｜ Stage 0 ×0</div>
+    <div class="mut" style="margin-top:6px">⚠️ MA信号需累积约 <b>50 个交易日</b>行情后才会生效，此前每天点「刷新行情」自动累积净值序列。</div>
+  </div>
+  <div class="card"><h3>📉 减仓速查（战术仓）</h3>
+    <div class="rule">⚠️ <b>连续2日收盘跌破20MA</b> → 减至当前战术仓的 70%（减30%）</div>
+    <div class="rule">🚨 <b>连续2日收盘跌破50MA</b> → 减至当前战术仓的 30%（减70%）</div>
+    <div class="rule">💥 <b>周线破位</b> → 清仓战术仓，回流现金仓</div>
+  </div>
+  <div class="card"><h3>🛒 买入触发（大跌时 · 基准：沪深300从阶段高点跌幅）</h3>
+    <div class="rule">📉 <b>-5%</b> → 动用5%现金加仓核心仓</div>
+    <div class="rule">📉 <b>-10%</b> → 动用10%现金，核心仓5% + 战术仓5%</div>
+    <div class="rule">📉 <b>-15%</b> → 动用剩余5%现金加仓战术仓（动用后现金仓最低可至0%）</div>
+  </div>
+  <div class="card"><h3>💰 卖出触发（高估时 · 按对应指数PE分位）</h3>
+    <div class="rule">🔶 <b>分位&gt;80%</b> → 战术仓止盈1/3；核心仓暂停定投（估值闸门自动执行）</div>
+    <div class="rule">🔴 <b>分位&gt;90%</b> → 战术仓止盈2/3，核心仓不动但停买</div>
+    <div class="rule">💥 <b>分位&gt;95%</b> → 极端高估：核心仓也分批减持，多指数同时触发时总仓位降至50%以下</div>
+  </div>
+  <div class="card"><h3>⚖️ 再平衡带宽（v12.1修订 · 5/25混合规则）</h3>
+    <div class="rule">仓别实际占比偏离目标 <b>绝对&lt;5个百分点</b> 且 <b>相对&lt;目标的25%</b> → 不动作，靠定投自然修正</div>
+    <div class="rule">任一条件触发（偏离 <b>≥5pt</b> 或 <b>≥目标的25%</b>）→ 总览页标黄提示，月初统一再平衡</div>
+    <div class="mut">示例：核心仓目标40% → 带宽 35%~45%（5pt先触发）；对冲仓目标10% → 带宽 7.5%~12.5%（25%相对先触发）。两条规则取先触发者。</div>
+  </div>
+</section>
+
+<section id="tab-log">
+  <div class="card"><h3>＋ 新增记录</h3>
+    <div class="row">
+      <input id="txDate" type="date">
+      <input id="txCode" placeholder="代码" style="width:90px">
+      <input id="txName" placeholder="名称" style="width:130px">
+      <select id="txSide"><option>买入</option><option>卖出</option></select>
+      <input id="txAmt" type="number" placeholder="金额" style="width:90px">
+      <input id="txShares" type="number" placeholder="份额(选填)" style="width:100px">
+      <input id="txNav" type="number" step="0.0001" placeholder="净值(选填)" style="width:100px">
+      <input id="txNote" placeholder="备注" style="width:140px">
+      <button class="btn primary" id="txAdd">记录</button>
+    </div>
+    <div class="mut">金额留空时，若已填份额和净值会自动按 份额×净值 计算金额。买入会从现金仓扣款、卖出会回补现金仓并结转已实现盈亏，实现仓位实时转化。</div>
+  </div>
+  <div class="card"><h3>📝 交易日志</h3><div id="txTable" class="tablewrap"></div></div>
+</section>
+
+<section id="tab-data">
+  <div class="card"><h3>💾 数据管理</h3>
+    <div class="row">
+      <button class="btn primary" id="saveBtn">💾 保存到浏览器</button>
+      <button class="btn" id="exportBtn">📤 导出JSON</button>
+      <label class="btn">📥 导入文件<input type="file" id="fileInp" accept=".json" style="display:none"></label>
+      <button class="btn" id="resetBtn">🗑 恢复内置默认数据</button>
+    </div>
+    <div class="mut" id="saveStat" style="margin-bottom:10px"></div>
+    <h3>📋 粘贴JSON导入（兼容 portfolio-*.json 完整格式）</h3>
+    <textarea id="pasteBox" placeholder='直接粘贴完整组合JSON（含 holdings / customFunds / peData / weeklySignals / monthlyTargets / transactions）'></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="pasteBtn">解析导入</button></div>
+    <div id="importErr" style="color:var(--red);font-size:13px"></div>
+    <div class="mut" style="margin-top:10px">导入器为宽容模式，字段缺失自动补默认值。持有收益 holdProfit 由「市值−持仓成本」自动算出；累计盈亏 profit 独立展示，不再互相反推。部分沙箱环境禁用 localStorage，此时保存会失败，请用导出JSON备份。</div>
+  </div>
+  <div class="card">
+    <h3>☁️ Gist 同步配置（一键推送）</h3>
+    <div class="mut" style="margin-bottom:10px">配置 GitHub Token 和 Gist ID，修改数据后直接点击推送。若浏览器 CORS 限制导致失败，下方提供手动复制方案。</div>
+    <div class="row" style="flex-wrap:wrap;gap:10px">
+      <label>Token <input id="gistToken" type="password" placeholder="ghp_xxxx 或 github_pat_xxx" style="width:260px"></label>
+      <label>Gist ID <input id="gistId" type="text" placeholder="46ee0035ea..." style="width:220px"></label>
+      <button class="btn" id="gistSaveConfig">💾 保存配置</button>
+      <button class="btn primary" id="gistPush">☁️ 推送到 Gist</button>
+    </div>
+    <div id="gistStatus" style="margin-top:8px;font-size:13px"></div>
+    <div id="gistFallback" style="display:none;margin-top:10px">
+      <div class="mut">浏览器阻止了自动推送，请复制下方 JSON 到 Gist 手动更新：</div>
+      <textarea id="gistFallbackBox" style="width:100%;height:200px;font-size:11px" readonly></textarea>
+      <div class="row" style="margin-top:6px"><button class="btn" id="gistCopyBtn">📋 复制到剪贴板</button></div>
+    </div>
+    <div class="mut" style="margin-top:6px;font-size:12px">Token 仅保存在浏览器本地。Classic Token 勾选 <b>gist</b> 权限；Fine-grained Token 需勾选 Gist 读写权限。</div>
+  </div>
+  <div class="card">
+    <h3>📊 总仓位分配编辑</h3>
+    <div class="mut" style="margin-bottom:10px">修改四大仓位占总资产的百分比（合计建议 = 100%）</div>
+    <div class="row" id="allocationRow">
+      <label>核心仓 <input id="alloc-core" type="number" style="width:70px" min="0" max="100">%</label>
+      <label>战术仓 <input id="alloc-tactical" type="number" style="width:70px" min="0" max="100">%</label>
+      <label>对冲仓 <input id="alloc-hedge" type="number" style="width:70px" min="0" max="100">%</label>
+      <label>现金仓 <input id="alloc-cash" type="number" style="width:70px" min="0" max="100">%</label>
+      <button class="btn primary" id="allocSave">保存分配</button>
+    </div>
+    <div id="allocSum" style="margin-top:8px;font-size:13px"></div>
+  </div>
+</section>
+
+</main>
+
+<div class="modalback" id="modal">
+  <div class="modalbox">
+    <h3 id="modalTitle">添加基金</h3>
+    <div class="modalerr" id="modalErr"></div>
+    <label id="modalPosRow">仓别
+      <select id="mPos"><option value="core">🛡️ 核心仓</option><option value="tactical">⚔️ 战术仓</option><option value="hedge">🌗 对冲仓</option><option value="cash">💰 现金仓</option></select>
+    </label>
+    <label>基金名称 <input id="mName" type="text" placeholder="例：沪深300"></label>
+    <label>基金代码 <input id="mCode" type="text" placeholder="例：110020"></label>
+    <label>当前市值 <input id="mMv" type="number" placeholder="0"></label>
+    <label>累计盈亏（可填0） <input id="mPf" type="number" placeholder="0"></label>
+    <label>目标占比 %（可填0） <input id="mTg" type="number" placeholder="0"></label>
+    <div class="modalrow">
+      <button class="btn" id="modalCancel">取消</button>
+      <button class="btn primary" id="modalConfirm">确认添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const LS_KEY='warroom_v12';
+const POS_META={core:{label:'🛡️ 核心仓',color:'#58a6ff'},tactical:{label:'⚔️ 战术仓',color:'#f0883e'},hedge:{label:'🌗 对冲仓',color:'#d29922'},cash:{label:'💰 现金仓',color:'#3fb950'}};
+const STAGE_COEF={'3':1.2,'2':1,'1.5':0.6,'1':0.3,'0':0};
+const ATTACK_PACE={'3':0.35,'2':0.25,'1.5':0.15,'1':0.1,'0':0};
+const PE_PROXY={'563020':'930841','021208':'930050','110020':'510300','159819':'930713','562500':'H30590','512480':'930813','513100':'513100'};
+const COMMODITY_PROXY={'518880':'518880','000218':'518880'};
+const FUND_TAG={'518880':'黄金','000218':'黄金','004987':'煤炭石油'};
+const SECTOR_MAP={'159819':'AI算力','562500':'人形机器人','512480':'半导体'};
+const TX_MAP={'563020':'sh563020','159819':'sz159819','562500':'sh562500','512480':'sh512480','518880':'sh518880','513100':'sh513100','513500':'sh513500','510300':'sh510300','510500':'sh510500','510880':'sh510880','510050':'sh510050','588000':'sh588000','159915':'sz159915','159920':'sz159920','513050':'sh513050','512100':'sh512100'};
+
+/* 唯一 PE 默认数据源（去重，供 DEFAULT_DATA 与 normalize 共用） */
+const DEFAULT_PE_DATA=[
+  {code:'510300',name:'沪深300',pe:13.65,pb:1.43,pct:64.73,date:'2026-06-12',source:'akshare'},
+  {code:'930050',name:'中证A50',pe:14.2,pb:1.55,pct:45.0,date:'2026-06-12',source:'预存估算'},
+  {code:'930841',name:'中证红利低波动',pe:8.1,pb:0.92,pct:78.0,date:'2026-06-12',source:'预存估算'},
+  {code:'930713',name:'中证人工智能',pe:52.0,pb:4.2,pct:65.0,date:'2026-06-12',source:'预存估算'},
+  {code:'H30590',name:'中证机器人',pe:48.0,pb:3.8,pct:55.0,date:'2026-06-12',source:'预存估算'},
+  {code:'930813',name:'中华半导体芯片',pe:75.0,pb:5.5,pct:72.0,date:'2026-06-12',source:'预存估算'},
+  {code:'513100',name:'纳指ETF',pe:37.02,pb:null,pct:83.5,date:'2026-06-12',source:'gurufocus'},
+  {code:'518880',name:'黄金ETF',pe:null,pb:null,price:9.25,pct:75.0,date:'2026-06-12',source:'预存估算'}
+];
+const DEFAULT_SECTOR_SCORES={"AI算力":0.733,"人形机器人":0.588,"半导体":0.84,"消费电子":0.937,"港股互联网":0.277,"低空经济":0.119,"新能源":0.231,"军工":0.242,"创新药":0.184,"央企价值":0.415,"黄金":0.347,"券商":0.322};
+
+const DEFAULT_DATA={
+"holdings":[
+{"positionId":"core","funds":[
+{"id":"core-0","code":"563020","name":"红利低波","marketValue":44012,"profit":-802,"isPlanned":true,"targetRatio":20},
+{"id":"core-1","code":"021208","name":"中证A50","marketValue":85851,"profit":851,"isPlanned":true,"targetRatio":12},
+{"id":"core-2","code":"110020","name":"沪深300","marketValue":73357,"profit":857,"isPlanned":true,"targetRatio":8}]},
+{"positionId":"tactical","funds":[
+{"id":"tactical-0","code":"159819","name":"AI算力","marketValue":77393,"profit":15194,"isPlanned":true,"targetRatio":9},
+{"id":"tactical-1","code":"562500","name":"机器人","marketValue":70535,"profit":-1882,"isPlanned":true,"targetRatio":9},
+{"id":"tactical-2","code":"512480","name":"半导体","marketValue":81893,"profit":11592,"isPlanned":true,"targetRatio":9},
+{"id":"custom-1780655682165","code":"004987","name":"诺德混合","marketValue":33577,"profit":1877,"isPlanned":false,"targetRatio":3}]},
+{"positionId":"hedge","funds":[
+{"id":"hedge-0","code":"518880","name":"黄金ETF","marketValue":13050,"profit":25398,"isPlanned":true,"targetRatio":7},
+{"id":"hedge-1","code":"513100","name":"纳指ETF","marketValue":30944,"profit":1744,"isPlanned":true,"targetRatio":3}]},
+{"positionId":"cash","funds":[
+{"id":"cash-0","code":"CASH_MMF","name":"货币基金","marketValue":291609,"profit":0,"isPlanned":true,"targetRatio":12},
+{"id":"cash-1","code":"CASH_BOND","name":"短债基金","marketValue":458265,"profit":42384,"isPlanned":true,"targetRatio":8}]}],
+"customFunds":[
+{"id":"custom-0","code":"019005","name":"国投瑞银白银期货(LOF)C","marketValue":26250,"profit":0,"isPlanned":true,"targetRatio":0},
+{"id":"custom-1","code":"000218","name":"国泰黄金ETF联接A","marketValue":110340,"profit":0,"isPlanned":true,"targetRatio":0}],
+"peData":DEFAULT_PE_DATA.map(x=>({...x})),
+"transactions":[],
+"lastSaved":"2026-06-12T03:12:21.457Z",
+"weeklySignals":{"tradeDate":"2026-06-12","DATA_TIMESTAMP":"2026-06-12T15:30:35.967316","TS":0.436,"TS_raw":43.6,"MC":0.888,"GiniCoefficient":0.328,"MainlineTrend":"增强","stage":1.5,"isBreakoutMode":false,"isBalancedMode":false,"extremeFlag":{"triggered":false,"flags":[]},
+"sectorScores":{...DEFAULT_SECTOR_SCORES},
+"sGradeSectors":["消费电子"],"engineVersion":"4.2"},
+"monthlyTargets":{"2026-06":{"core":40,"tactical":30,"hedge":10,"cash":20}},
+"sectorStreaks":{"消费电子":2},
+"lastStreakWeek":"2026-W24"
+};
+
+let state=null,lastWeeklyRows=[],resetArmed=false;
+let editing=null,pendingEdit=null,flashTarget=null;
+let currentAddType='holdings';
+
+function num(v){const n=Number(v);return isFinite(n)?n:0;}
+function fmt(n){return '¥'+Math.round(n).toLocaleString('zh-CN');}
+function pnlCls(v){return v>=0?'pos':'neg';}
+function sign(v){return (v>=0?'+':'')+Math.round(v).toLocaleString('zh-CN');}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500);}
+function pct(part,total){return total>0?part/total*100:0;}
+
+function normalize(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('顶层必须是JSON对象');
+  const hs=raw.holdings||raw.positions;
+  if(!Array.isArray(hs))throw new Error('缺少 holdings 数组（兼容字段名 positions）');
+  const mapFund=f=>{
+    const marketValue=num(f.marketValue??f.amount??f.value);
+    const profit=num(f.profit??f.pnl); // 累计盈亏：独立展示，不参与反推
+    const shares=(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null;
+    const costUnit=(f.costUnit!=null&&isFinite(Number(f.costUnit)))?Number(f.costUnit):null;
+    let cost=(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null;
+    // 仅用 costUnit×shares 反推持仓成本；绝不用 profit 反推（profit 含已实现，会失真）
+    if(cost==null&&costUnit!=null&&shares!=null){
+      cost=Math.round(shares*costUnit*100)/100;
+    }
+    return{
+      id:f.id||('f'+Math.random().toString(36).slice(2)),
+      code:String(f.code??''),
+      name:f.name||String(f.code??'未命名'),
+      marketValue,
+      profit,
+      cost,
+      costUnit,
+      shares,
+      holdProfit:(f.holdProfit!=null&&isFinite(Number(f.holdProfit)))?Number(f.holdProfit):null,
+      _lastPrice:(f._lastPrice!=null&&isFinite(Number(f._lastPrice)))?Number(f._lastPrice):null,
+      _lastPriceDate:f._lastPriceDate||null,
+      isPlanned:f.isPlanned!==false,
+      targetRatio:num(f.targetRatio??f.target),
+      priceHistory:Array.isArray(f.priceHistory)?f.priceHistory:[]
+    };
+  };
+  const peData=Array.isArray(raw.peData)?raw.peData.slice():[];
+  const peMap={};peData.forEach(p=>peMap[p.code]=p);
+  DEFAULT_PE_DATA.forEach(d=>{if(!peMap[d.code])peData.push({...d});});
+
+  const weeklySignals=(raw.weeklySignals&&typeof raw.weeklySignals==='object')?raw.weeklySignals:null;
+  if(weeklySignals){
+    if(!weeklySignals.sectorScores)weeklySignals.sectorScores={};
+    Object.entries(DEFAULT_SECTOR_SCORES).forEach(([k,v])=>{if(weeklySignals.sectorScores[k]==null)weeklySignals.sectorScores[k]=v;});
+    if(!weeklySignals.sGradeSectors)weeklySignals.sGradeSectors=[];
+    const newS=Object.entries(weeklySignals.sectorScores).filter(([k,v])=>v>=0.85).map(([k])=>k);
+    weeklySignals.sGradeSectors=[...new Set([...weeklySignals.sGradeSectors,...newS])];
+    if(!weeklySignals.tradeDate)weeklySignals.tradeDate='2026-06-12';
+    if(!weeklySignals.TS)weeklySignals.TS=0.436;
+    if(!weeklySignals.TS_raw)weeklySignals.TS_raw=43.6;
+    if(!weeklySignals.MC)weeklySignals.MC=0.888;
+    if(!weeklySignals.stage)weeklySignals.stage=1.5;
+    if(!weeklySignals.MainlineTrend)weeklySignals.MainlineTrend='增强';
+    if(!weeklySignals.engineVersion)weeklySignals.engineVersion='4.3-auto';
+    if(!weeklySignals.extremeFlag)weeklySignals.extremeFlag={triggered:false,flags:[]};
+    if(weeklySignals.isBreakoutMode==null)weeklySignals.isBreakoutMode=false;
+    if(weeklySignals.isBalancedMode==null)weeklySignals.isBalancedMode=false;
+  }
+
+  const st={
+    holdings:hs.map(g=>({positionId:g.positionId||g.id||'core',funds:(g.funds||[]).map(mapFund)})),
+    customFunds:Array.isArray(raw.customFunds)?raw.customFunds.map(mapFund):[],
+    peData:peData,
+    transactions:Array.isArray(raw.transactions)?raw.transactions:[],
+    weeklySignals:weeklySignals,
+    monthlyTargets:(raw.monthlyTargets&&typeof raw.monthlyTargets==='object')?raw.monthlyTargets:{},
+    lastSaved:raw.lastSaved||null,
+    sectorStreaks:(raw.sectorStreaks&&typeof raw.sectorStreaks==='object')?raw.sectorStreaks:{},
+    lastStreakWeek:raw.lastStreakWeek||null
+  };
+  // 初始化持有收益
+  st.holdings.forEach(g=>g.funds.forEach(reconcile));
+  st.customFunds.forEach(reconcile);
+  return st;
+}
+
+function loadState(){
+  try{const s=localStorage.getItem(LS_KEY);if(s){
+    const st=normalize(JSON.parse(s));
+    calcSectorStreaks(st);
+    return st;
+  }}catch(e){}
+  return normalize(JSON.parse(JSON.stringify(DEFAULT_DATA)));
+}
+function isoWeek(d){
+  const dt=new Date(d);
+  const t=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));
+  const day=t.getUTCDay()||7;
+  t.setUTCDate(t.getUTCDate()+4-day);
+  const ys=new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  const wk=Math.ceil(((t-ys)/864e5+1)/7);
+  return t.getUTCFullYear()+'-W'+String(wk).padStart(2,'0');
+}
+function calcSectorStreaks(st){
+  if(!st)st=state;
+  if(!st.weeklySignals||!st.weeklySignals.sectorScores)return;
+  const curWk=isoWeek(st.weeklySignals.tradeDate||'2026-06-12');
+  if(curWk===st.lastStreakWeek)return;
+  const scores=st.weeklySignals.sectorScores;
+  const streaks=st.sectorStreaks||{};
+  Object.entries(scores).forEach(([k,v])=>{
+    if(v>=0.85)streaks[k]=(streaks[k]||0)+1;
+    else streaks[k]=0;
+  });
+  st.sectorStreaks=streaks;
+  st.lastStreakWeek=curWk;
+}
+function persist(msg){
+  state.lastSaved=new Date().toISOString();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));toast(msg||'✅ 已保存到浏览器');}
+  catch(e){toast('⚠️ 本环境不支持localStorage，请用导出JSON备份');}
+  renderAll();
+}
+function persistSilent(){
+  state.lastSaved=new Date().toISOString();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
+  renderAll();
+}
+
+/* ---------- 前端行情刷新（腾讯接口，无CORS） ---------- */
+async function refreshQuotes(){
+  const need=[];
+  const skipped=[];
+  const collect=f=>{
+    const hasShares=f.shares!=null&&isFinite(Number(f.shares))&&Number(f.shares)>0;
+    const hasPrice=f._lastPrice!=null&&isFinite(Number(f._lastPrice))&&Number(f._lastPrice)>0;
+    if((hasShares||hasPrice)&&TX_MAP[f.code]){
+      need.push(TX_MAP[f.code]);
+    }else if((hasShares||hasPrice)&&f.code!=='CASH_MMF'&&!f.code.startsWith('CASH_')){
+      skipped.push(f);
+    }
+  };
+  state.holdings.forEach(g=>g.funds.forEach(collect));
+  state.customFunds.forEach(collect);
+  if(!need.length&&skipped.length){
+    toast(`没有可自动刷新的场内ETF；${skipped.length} 只场外基金需手动维护`);
+    return;
+  }
+  if(!need.length){toast('没有可刷新的 ETF 持仓；请确保基金有 shares 或 _lastPrice 字段，且 code 在腾讯映射表中');return;}
+  try{
+    const res=await fetch(`https://qt.gtimg.cn/q=${need.join(',')}`);
+    const buf=await res.arrayBuffer();
+    const text=new TextDecoder('gbk').decode(buf);
+    const lines=text.trim().split(';').filter(Boolean);
+    const priceMap={};
+    lines.forEach(line=>{
+      const m=line.match(/v_([a-z]+(\d+))="([^"]*)"/);
+      if(!m)return;
+      const rawCode=m[2];
+      const parts=m[3].split('~');
+      if(parts.length>3)priceMap[rawCode]=parseFloat(parts[3]);
+    });
+    let updated=0;
+    const _today=new Date().toISOString().slice(0,10);
+    const apply=f=>{
+      const price=priceMap[f.code];
+      if(!price||!isFinite(price)||price<=0)return;
+      if(f._lastPrice!=null&&f._lastPrice>0&&Math.abs(price-f._lastPrice)/f._lastPrice>0.3){
+        console.warn('报价偏离超30%，已忽略以防拆分/异常',f.code,price,'旧价',f._lastPrice);return;
+      }
+      const hasShares=f.shares!=null&&isFinite(Number(f.shares))&&Number(f.shares)>0;
+      const shares=hasShares?Number(f.shares):(f._lastPrice>0?f.marketValue/f._lastPrice:0);
+      if(shares<=0)return;
+      f.marketValue=Math.round(shares*price*100)/100;
+      f._lastPrice=price;
+      f._lastPriceDate=_today;
+      if(f.cost!=null){
+        f.holdProfit=Math.round((f.marketValue-f.cost)*100)/100;
+      }
+      if(!Array.isArray(f.priceHistory))f.priceHistory=[];
+      const ph=f.priceHistory;
+      if(ph.length&&ph[ph.length-1].date===_today)ph[ph.length-1].close=price;
+      else ph.push({date:_today,close:price});
+      if(ph.length>60)f.priceHistory=ph.slice(-60);
+      updated++;
+    };
+    state.holdings.forEach(g=>g.funds.forEach(apply));
+    state.customFunds.forEach(apply);
+    const skipMsg=skipped.length?` · ${skipped.length} 只场外基金需手动维护`:'';
+    persist(`已刷新 ${updated} 只 ETF 行情（腾讯接口）${skipMsg}`);
+  }catch(e){toast('行情刷新失败：'+e.message);}
+}
+
+function stats(){
+  const groups={};let totalH=0,totalP=0;
+  state.holdings.forEach(g=>{
+    const mv=g.funds.reduce((s,f)=>s+f.marketValue,0);
+    const pf=g.funds.reduce((s,f)=>s+f.profit,0);
+    groups[g.positionId]={mv,pf};totalH+=mv;totalP+=pf;
+  });
+  const customMV=state.customFunds.reduce((s,f)=>s+f.marketValue,0);
+  const customPF=state.customFunds.reduce((s,f)=>s+f.profit,0);
+  const total=totalH+customMV,profit=totalP+customPF,cost=total-profit;
+  return{groups,total,profit,rate:cost>0?profit/cost*100:0,customMV};
+}
+function curTargets(){
+  const ks=Object.keys(state.monthlyTargets||{}).sort();
+  return state.monthlyTargets[ks[ks.length-1]]||{core:40,tactical:30,hedge:10,cash:20};
+}
+function getPe(code){return (state.peData||[]).find(p=>p.code===code);}
+function grade(s){return s>=0.85?'S':s>=0.7?'A':s>=0.5?'B':s>=0.3?'C':'D';}
+function stageInfo(){
+  const ws=state.weeklySignals||{};
+  const stage=ws.stage!=null?ws.stage:1.5;
+  return{stage,coef:STAGE_COEF[String(stage)]??0.6,pace:ATTACK_PACE[String(stage)]??0.15};
+}
+
+function ma(hist,n){if(!hist||hist.length<n)return null;const s=hist.slice(-n).reduce((a,b)=>a+b.close,0);return s/n;}
+function maState(f){
+  const h=f.priceHistory;if(!h||h.length<50)return null;
+  const p=h[h.length-1].close,m20=ma(h,20),m50=ma(h,50);
+  if(p<m20||p<m50)return{f:0,label:'线下观望'};
+  if(p>=m50&&m20>m50)return{f:0.8,label:'双线上'};
+  if(p>=m50&&m20<=m50)return{f:0.5,label:'单线强'};
+  if(p>=m20)return{f:0.25,label:'单线弱'};
+  return{f:0,label:'线下观望'};
+}
+function belowMaStreak(hist,maLen){
+  if(!hist||hist.length<maLen+1)return 0;
+  let cnt=0;
+  for(let i=hist.length-1;i>=maLen-1;i--){
+    const w=hist.slice(i-maLen+1,i+1);
+    const m=w.reduce((a,b)=>a+b.close,0)/maLen;
+    if(hist[i].close<m)cnt++;else break;
+  }
+  return cnt;
+}
+function breakAlerts(){
+  const out=[];
+  state.holdings.filter(g=>g.positionId==='tactical').forEach(g=>g.funds.forEach(f=>{
+    const h=f.priceHistory;if(!h||h.length<51)return;
+    if(belowMaStreak(h,50)>=2)out.push(`🚨 ${f.name} 连续2日收盘跌破MA50 → 战术仓减70%`);
+    else if(belowMaStreak(h,20)>=2)out.push(`🚨 ${f.name} 连续2日收盘跌破MA20 → 战术仓减30%`);
+  }));
+  return out;
+}
+
+/* 5/25混合再平衡带宽 */
+function bandHit(act,tg){
+  const absd=Math.abs(act-tg);
+  const reld=tg>0?absd/tg:(absd>0?1:0);
+  const hitAbs=absd>=5,hitRel=reld>=0.25;
+  return{hit:hitAbs||hitRel,absd,reld,why:hitAbs?'≥5pt':hitRel?'相对≥25%':''};
+}
+
+/* 遍历所有基金（持仓 + 计划外），计划外按对冲/商品逻辑处理 */
+function eachFundWithPos(cb){
+  state.holdings.forEach(g=>g.funds.forEach(f=>cb(f,g.positionId)));
+  state.customFunds.forEach(f=>cb(f,'hedge'));
+}
+
+function sellSignals(){
+  const out=[];
+  eachFundWithPos((f,positionId)=>{
+    const proxy=PE_PROXY[f.code]||COMMODITY_PROXY[f.code];if(!proxy)return;
+    const pe=getPe(proxy);if(!pe||pe.pct==null)return;
+    const isCommodity=!PE_PROXY[f.code]&&!!COMMODITY_PROXY[f.code];
+    const tactical=positionId==='tactical';
+    if(isCommodity){
+      if(pe.pct>95)out.push({lv:'danger',txt:`🚨 ${f.name}（金价分位${pe.pct}%）极端高估：贵金属减持2/3并暂停加仓`});
+      else if(pe.pct>90)out.push({lv:'danger',txt:`🔴 ${f.name}（金价分位${pe.pct}%）>90%：贵金属减持1/3`});
+      else if(pe.pct>80)out.push({lv:'warn',txt:`🔶 ${f.name}（金价分位${pe.pct}%）>80%：暂停加仓`});
+      return;
+    }
+    if(tactical){
+      const ms=maState(f);
+      if(pe.pct>80){
+        if(ms&&ms.f===0)out.push({lv:'danger',txt:`🚨 ${f.name}（参照${pe.name} 分位${pe.pct}%）高估且已跌破均线（${ms.label}）：止盈并降低战术仓敞口`});
+        else out.push({lv:'warn',txt:`🔶 ${f.name}（参照${pe.name} 分位${pe.pct}%）>80%：停止加仓，趋势未破不主动减（让利润奔跑）`});
+      }
+      return;
+    }
+    if(pe.pct>95)out.push({lv:'danger',txt:`🚨 ${f.name}（参照${pe.name} 分位${pe.pct}%）极端高估：核心仓暂停定投并分批减持；多指数同时>95%时总仓位降至50%以下`});
+    else if(pe.pct>90)out.push({lv:'danger',txt:`🔴 ${f.name}（分位${pe.pct}%）>90%：核心仓不动但停买`});
+    else if(pe.pct>80)out.push({lv:'warn',txt:`🔶 ${f.name}（参照${pe.name} 分位${pe.pct}%）>80%：核心仓暂停定投（估值闸门已自动停买）`});
+  });
+  return out;
+}
+
+function anomalies(){
+  const a=[];const st=stats();const t=curTargets();
+  const chk=f=>{
+    if(f.cost!=null&&f.cost>0&&f.holdProfit!=null){
+      const implied=f.cost+f.holdProfit;
+      if(Math.abs(implied-f.marketValue)>Math.max(1,f.marketValue*0.005))
+        a.push({lv:'warn',txt:`⚠️ 数据异常：${f.name} 持仓成本(${fmt(f.cost)}) + 持有收益(${sign(f.holdProfit)}) = ${fmt(implied)}，与市值(${fmt(f.marketValue)})不符，请核对录入`});
+    }
+    if(f.cost==null&&f.marketValue>0&&f.shares==null){
+      a.push({lv:'info',txt:`ℹ️ ${f.name} 未填写份额/成本单价：无法计算"持有收益"，仅展示累计盈亏。建议补录以启用浮盈追踪`});
+    }
+  };
+  state.holdings.forEach(g=>g.funds.forEach(chk));
+  state.customFunds.forEach(chk);
+  state.holdings.forEach(g=>{
+    const sum=g.funds.reduce((s,f)=>s+f.targetRatio,0);const tg=t[g.positionId];
+    if(tg!=null&&Math.abs(sum-tg)>0.01)a.push({lv:'warn',txt:`⚠️ ${POS_META[g.positionId]?.label||g.positionId} 内各基金目标比例合计 ${sum}%，与月度目标 ${tg}% 不一致`});
+  });
+  if(st.customMV>0)a.push({lv:'info',txt:`ℹ️ 计划外资产 ${fmt(st.customMV)}（占总资产 ${pct(st.customMV,st.total).toFixed(1)}%）未纳入目标体系。其中黄金/白银类与对冲仓黄金ETF敞口重叠，贵金属实际总敞口远超对冲仓7%目标，建议并入对冲仓统一管理或明确减持计划`});
+  const latest=(state.peData||[]).map(p=>p.date).filter(Boolean).sort().pop();
+  if(latest){const days=Math.floor((Date.now()-new Date(latest).getTime())/864e5);
+    if(days>7)a.push({lv:'warn',txt:`⚠️ PE估值数据最新日期 ${latest}（已 ${days} 天未更新），请刷新后再做止盈/建仓决策`});}
+  return a;
+}
+
+function reconcile(f){
+  if(f.marketValue!=null&&f.marketValue<0)f.marketValue=0;
+  if(f.shares===0){f.marketValue=0;f.cost=0;f.profit=f.profit||0;f.holdProfit=0;f._lastPrice=null;return;}
+  if(f.cost==null&&f.costUnit!=null&&f.shares!=null&&f.shares>0){
+    f.cost=Math.round(f.shares*f.costUnit*100)/100;
+  }
+  // 持有收益始终 = 市值 − 持仓成本（唯一自动计算，只读）
+  if(f.cost!=null&&f.marketValue!=null){
+    f.holdProfit=Math.round((f.marketValue-f.cost)*100)/100;
+  }else{
+    f.holdProfit=null;
+  }
+  if(f._lastPrice==null&&f.shares!=null&&f.shares>0&&f.marketValue!=null){
+    f._lastPrice=Math.round(f.marketValue/f.shares*10000)/10000;
+  }
+}
+
+/* ---------- 查找 ---------- */
+function findFund(id){
+  for(const g of state.holdings){const f=g.funds.find(x=>x.id===id);if(f)return f;}
+  return state.customFunds.find(x=>x.id===id)||null;
+}
+function findFundByCode(code){
+  for(const g of state.holdings){const f=g.funds.find(x=>x.code===code);if(f)return f;}
+  return state.customFunds.find(x=>x.code===code)||null;
+}
+function findCashFund(){
+  const g=state.holdings.find(h=>h.positionId==='cash');
+  if(!g||!g.funds.length)return null;
+  return g.funds.find(f=>f.code==='CASH_MMF')||g.funds[0];
+}
+
+/* ---------- 记账（资金守恒：买入扣现金 / 卖出回补现金 + 结转已实现盈亏） ---------- */
+function applyTxToHolding(tx){
+  const f=findFundByCode(tx.code);if(!f)return false;
+  const cash=findCashFund();
+  const sh=(tx.shares!=null&&tx.shares>0)?tx.shares:(tx.nav>0?tx.amount/tx.nav:null);
+  if(tx.side==='买入'){
+    if(sh!=null)f.shares=(f.shares||0)+sh;
+    f.cost=(f.cost||0)+tx.amount;
+    f.marketValue=Math.round(((f.marketValue||0)+tx.amount)*100)/100; // 先按成本入账，刷新价后修正
+    if(cash&&cash!==f)cash.marketValue=Math.max(0,Math.round(((cash.marketValue||0)-tx.amount)*100)/100);
+  }else{
+    if(sh!=null&&f.shares){
+      const ratio=Math.min(1,sh/f.shares);
+      const soldCost=Math.round((f.cost||0)*ratio*100)/100;
+      const realized=Math.round((tx.amount-soldCost)*100)/100; // 本次已实现盈亏
+      f.cost=Math.round((f.cost||0)*(1-ratio)*100)/100;
+      f.marketValue=Math.round((f.marketValue||0)*(1-ratio)*100)/100;
+      f.shares=Math.max(0,f.shares-sh);
+      f.profit=Math.round(((f.profit||0)+realized)*100)/100; // 累计盈亏结转
+      if(cash&&cash!==f)cash.marketValue=Math.round(((cash.marketValue||0)+tx.amount)*100)/100;
+    }else{
+      // 无份额信息的卖出：仅回补现金，不改成本（提示用户补录）
+      if(cash&&cash!==f)cash.marketValue=Math.round(((cash.marketValue||0)+tx.amount)*100)/100;
+      f.marketValue=Math.max(0,Math.round(((f.marketValue||0)-tx.amount)*100)/100);
+    }
+  }
+  reconcile(f);
+  if(cash)reconcile(cash);
+  return true;
+}
+
+function delFund(id){
+  for(const g of state.holdings){
+    const i=g.funds.findIndex(x=>x.id===id);
+    if(i>-1){g.funds.splice(i,1);persistSilent();return;}
+  }
+  const i=state.customFunds.findIndex(x=>x.id===id);
+  if(i>-1){state.customFunds.splice(i,1);persistSilent();}
+}
+
+/* ---------- 添加基金模态框 ---------- */
+function openAddModal(type){
+  currentAddType=type;
+  document.getElementById('modalTitle').textContent=type==='custom'?'添加计划外资产':'添加持仓基金';
+  document.getElementById('modalPosRow').style.display=type==='custom'?'none':'block';
+  ['mName','mCode','mMv','mPf','mTg'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('modalErr').textContent='';
+  document.getElementById('modal').classList.add('on');
+  document.getElementById('mName').focus();
+}
+function closeAddModal(){document.getElementById('modal').classList.remove('on');}
+function confirmAdd(){
+  const err=document.getElementById('modalErr');
+  const name=document.getElementById('mName').value.trim();
+  const code=document.getElementById('mCode').value.trim();
+  const mv=parseFloat(document.getElementById('mMv').value);
+  const pf=parseFloat(document.getElementById('mPf').value)||0;
+  const tg=parseFloat(document.getElementById('mTg').value)||0;
+  if(!name){err.textContent='请填写基金名称';return;}
+  if(!code){err.textContent='请填写基金代码';return;}
+  if(!isFinite(mv)||mv<0){err.textContent='当前市值需为不小于0的数字';return;}
+  const id='f'+Date.now()+Math.random().toString(36).slice(2);
+  const fund={id,code,name,marketValue:mv,profit:pf,isPlanned:true,targetRatio:Math.max(0,tg)};
+  if(currentAddType==='custom'){
+    state.customFunds.push(fund);
+  }else{
+    const pos=document.getElementById('mPos').value;
+    const g=state.holdings.find(h=>h.positionId===pos);
+    if(g)g.funds.push(fund);else state.holdings.push({positionId:pos,funds:[fund]});
+  }
+  closeAddModal();
+  persist('已添加 '+name);
+}
+document.getElementById('modalCancel').onclick=closeAddModal;
+document.getElementById('modalConfirm').onclick=confirmAdd;
+document.getElementById('modal').addEventListener('mousedown',e=>{if(e.target.id==='modal')closeAddModal();});
+
+/* ---------- 行内编辑 ---------- */
+function edCell(f,field,display,extraCls){
+  return `<td class="ed ${extraCls||''}" data-fid="${esc(f.id)}" data-f="${field}">${display}</td>`;
+}
+function openEdit(cell){
+  const fund=findFund(cell.dataset.fid);if(!fund)return;
+  const field=cell.dataset.f;
+  const isText=field==='name'||field==='code'||field==='_lastPriceDate';
+  cell.innerHTML=`<input class="cellinp" type="${isText?'text':'number'}" ${isText?'':`step="${field==='costUnit'||field==='_lastPrice'?'0.0001':'0.01'}"`} value="${esc(fund[field]??'')}">`;
+  const inp=cell.querySelector('input');
+  editing={cell,fund,field};
+  inp.focus();inp.select();
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();commitEdit();}
+    else if(e.key==='Escape'){e.preventDefault();cancelEdit();}
+    else if(e.key==='Tab'){
+      e.preventDefault();
+      const cells=[...document.querySelectorAll('td.ed')];
+      const i=cells.indexOf(cell);
+      const nx=cells[i+(e.shiftKey?-1:1)];
+      if(nx)pendingEdit={fid:nx.dataset.fid,f:nx.dataset.f};
+      commitEdit();
+    }
+  });
+  inp.addEventListener('blur',()=>{if(editing&&editing.cell===cell)commitEdit();});
+}
+function commitEdit(){
+  if(!editing)return;
+  const{cell,fund,field}=editing;editing=null;
+  const inp=cell.querySelector('input');
+  if(field==='name'||field==='code'){
+    const v=inp?inp.value:'';
+    if(v!==fund[field]){fund[field]=v;flashTarget={fid:fund.id,f:field};persistSilent();}
+    else renderAll();
+  }else{
+    const v=inp?parseFloat(inp.value):NaN;
+    if(isFinite(v)&&v!==fund[field]){
+      fund[field]=field==='targetRatio'?Math.max(0,v):v;
+      // profit（累计盈亏）为独立字段，编辑后仅展示，不反推成本
+      if(field!=='holdProfit'&&field!=='targetRatio'&&field!=='_lastPriceDate'&&field!=='profit'){
+        if(field==='_lastPrice'&&fund.shares!=null&&fund.shares>0){
+          fund.marketValue=Math.round(fund.shares*v*100)/100;
+          fund._lastPriceDate=new Date().toISOString().slice(0,10);
+        }
+        reconcile(fund);
+      }
+      flashTarget={fid:fund.id,f:field};
+      persistSilent();
+    }else renderAll();
+  }
+}
+function cancelEdit(){editing=null;pendingEdit=null;renderAll();}
+document.addEventListener('mousedown',e=>{
+  const cell=e.target.closest('td.ed');
+  if(!cell)return;
+  if(editing){
+    if(editing.cell===cell)return;
+    e.preventDefault();
+    pendingEdit={fid:cell.dataset.fid,f:cell.dataset.f};
+    commitEdit();
+    return;
+  }
+  e.preventDefault();
+  openEdit(cell);
+});
+
+/* ---------- 渲染 ---------- */
+function renderOverview(){
+  const st=stats(),t=curTargets(),si=stageInfo();
+  document.getElementById('ovKpis').innerHTML=`
+    <div class="kpi"><div class="s">总资产</div><div class="v">${fmt(st.total)}</div><div class="s">${(st.total/10000).toFixed(1)}万 · 含计划外${(st.customMV/10000).toFixed(1)}万</div></div>
+    <div class="kpi"><div class="s">总盈亏（累计）</div><div class="v ${pnlCls(st.profit)}">${sign(st.profit)}</div><div class="s">收益率 ${st.rate>=0?'+':''}${st.rate.toFixed(2)}%</div></div>
+    <div class="kpi"><div class="s">现金仓占比</div><div class="v">${pct(st.groups.cash?.mv||0,st.total).toFixed(1)}%</div><div class="s">目标 ${t.cash}%</div></div>
+    <div class="kpi"><div class="s">当前 Stage</div><div class="v">${si.stage}</div><div class="s">建仓系数 ×${si.coef} · 月进攻节奏 ${(si.pace*100).toFixed(0)}%缺口</div></div>`;
+
+  const sigs=sellSignals();
+  let dec='';
+  sigs.forEach(s=>{dec+=`<div class="${s.lv==='danger'?'dangerbox':'warnbox'}">${s.txt}</div>`;});
+  const cashMV=st.groups.cash?.mv||0,excess=cashMV-t.cash/100*st.total;
+  if(excess>0)dec+=`<div class="okbox">💰 现金超配 ${fmt(excess)}，Stage ${si.stage} 建议本月动用约 ${fmt(excess*si.pace)} 大额建仓（详见「定投分配」Tab），分2~4笔在回调日执行</div>`;
+  const ws=state.weeklySignals;
+  if(ws&&ws.sGradeSectors&&ws.sGradeSectors.length){
+    const held=Object.values(SECTOR_MAP);
+    const miss=ws.sGradeSectors.filter(s=>!held.includes(s));
+    if(miss.length)dec+=`<div class="warnbox">👀 S级板块 <b>${miss.join('、')}</b> 当前无对应持仓——纳入观察池，若连续2周保持S级且大盘Stage≥2，可考虑用战术仓机动额度介入</div>`;
+  }
+  breakAlerts().forEach(m=>{dec+=`<div class="dangerbox">${m}</div>`;});
+  document.getElementById('ovDecision').innerHTML=dec||'<div class="okbox">今日无强制动作，按周定投纪律执行即可</div>';
+
+  let dist='';
+  ['core','tactical','hedge','cash'].forEach(k=>{
+    const g=st.groups[k]||{mv:0};const act=pct(g.mv,st.total);const tg=t[k]||0;
+    const bh=bandHit(act,tg);
+    dist+=`<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;font-size:13px">
+        <span>${POS_META[k].label}</span>
+        <span>${fmt(g.mv)} · 实际 <b>${act.toFixed(1)}%</b> / 目标 ${tg}%
+          <span class="tag ${bh.hit?'warn':'ok'}">${act>tg?'超配':'低配'} ${bh.absd.toFixed(1)}pt${bh.hit?' · 触发带宽('+bh.why+')':''}</span></span>
+      </div>
+      <div class="bar"><i style="width:${Math.min(act,100)}%;background:${POS_META[k].color}"></i></div>
+      <div class="bar" style="margin-top:2px;opacity:.3"><i style="width:${Math.min(tg,100)}%;background:${POS_META[k].color}"></i></div>
+    </div>`;
+  });
+  dist+=`<div class="mut">再平衡带宽（5/25规则）：偏离 ≥5个百分点 或 ≥目标的25%（任一）才标黄；触发后月初统一再平衡</div>`;
+  if(st.customMV>0)dist+=`<div class="mut">另有计划外资产 ${fmt(st.customMV)}（占 ${pct(st.customMV,st.total).toFixed(1)}%），未计入上述四仓目标</div>`;
+  document.getElementById('ovDist').innerHTML=dist;
+
+  const warns=anomalies();
+  document.getElementById('ovWarn').innerHTML=warns.length?`<div class="card"><h3>🩺 数据健康检查</h3>${warns.map(w=>`<div class="${w.lv==='info'?'infobox':'warnbox'}">${w.txt}</div>`).join('')}</div>`:'';
+  let rows='';
+  state.holdings.forEach(g=>{
+    rows+=`<tr><td colspan="14" style="text-align:left;color:${POS_META[g.positionId]?.color};font-weight:600;padding-top:10px">${POS_META[g.positionId]?.label||g.positionId}</td></tr>`;
+    g.funds.forEach(f=>{
+      const act=pct(f.marketValue,st.total);
+      const gap=f.targetRatio/100*st.total-f.marketValue;
+      rows+=`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}
+        ${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}
+        ${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}
+        ${edCell(f,'_lastPrice',f._lastPrice!=null?f._lastPrice.toFixed(4):'-','mut')}
+        ${edCell(f,'_lastPriceDate',f._lastPriceDate||'-','mut')}
+        ${edCell(f,'marketValue',fmt(f.marketValue))}
+        ${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}
+        <td class="${f.holdProfit!=null?pnlCls(f.holdProfit):'mut'}">${f.holdProfit!=null?sign(f.holdProfit):'-'}</td>
+        <td>${act.toFixed(1)}%</td>
+        ${edCell(f,'targetRatio',f.targetRatio+'%')}
+        <td class="${gap>0?'mut':''}">${gap>0?'缺'+fmt(gap):'达标'}</td>
+        <td style="text-align:left">${fundHint(f)}</td>
+        <td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`;
+    });
+  });
+  document.getElementById('ovFunds').innerHTML=`<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>累计盈亏</th><th>持有收益</th><th>实际%</th><th>目标%</th><th>缺口</th><th>信号提示</th><th>操作</th></tr>${rows}</table>`;
+
+  document.getElementById('ovCustom').innerHTML=state.customFunds.length?
+    `<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>累计盈亏</th><th>持有收益</th><th>占总资产</th><th>操作</th></tr>${
+      state.customFunds.map(f=>`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}${edCell(f,'_lastPrice',f._lastPrice!=null?f._lastPrice.toFixed(4):'-','mut')}${edCell(f,'_lastPriceDate',f._lastPriceDate||'-','mut')}${edCell(f,'marketValue',fmt(f.marketValue))}${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}<td class="${f.holdProfit!=null?pnlCls(f.holdProfit):'mut'}">${f.holdProfit!=null?sign(f.holdProfit):'-'}</td><td>${pct(f.marketValue,st.total).toFixed(1)}%</td><td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`).join('')
+    }</table>`:'<div class="mut">无</div>';
+}
+
+function fundHint(f){
+  const parts=[];
+  const isExchangeTraded=!!TX_MAP[f.code];
+  if(!isExchangeTraded&&f.code!=='CASH_MMF'&&!f.code.startsWith('CASH_')){
+    parts.push(`<span class="tag warn" title="场外基金，腾讯接口不支持自动刷新，请手动编辑净值">📋 需手动维护</span>`);
+  }
+  if(f.code==='518880'||f.code==='000218'){
+    const gold=state.peData.find(p=>p.code==='518880');
+    if(gold&&gold.pct!=null)parts.push(`<span class="tag ${gold.pct>80?'hot':gold.pct<30?'ok':''}">金价分位${gold.pct}%</span>`);
+    else parts.push(`<span class="tag mut">金价:暂无数据</span>`);
+  }else{
+    const proxy=PE_PROXY[f.code];const pe=proxy?getPe(proxy):null;
+    if(pe){
+      if(pe.pct!=null)parts.push(`<span class="tag ${pe.pct>80?'hot':pe.pct<30?'ok':''}">${esc(pe.name)}分位${pe.pct}%</span>`);
+      else parts.push(`<span class="tag mut">${esc(pe.name)}:暂无PE数据</span>`);
+    }
+  }
+  const sec=SECTOR_MAP[f.code];
+  const sc=sec&&state.weeklySignals?state.weeklySignals.sectorScores?.[sec]:null;
+  if(sc!=null)parts.push(`<span class="tag ${sc>=0.7?'ok':sc<0.3?'warn':''}">${sec} ${sc.toFixed(2)}·${grade(sc)}级</span>`);
+  const tag=FUND_TAG[f.code];
+  if(tag)parts.push(`<span class="tag">${tag}</span>`);
+  return parts.join('')||'<span class="mut">—</span>';
+}
+
+function renderSignals(){
+  calcSectorStreaks();
+  const ws=state.weeklySignals;
+  if(!ws){document.getElementById('sgKpis').innerHTML='';document.getElementById('sgSectors').innerHTML='<div class="mut">尚未导入市场信号，请在「数据管理」导入含 weeklySignals 的JSON</div>';document.getElementById('sgWatch').innerHTML='';return;}
+  const si=stageInfo();
+  const mode=ws.isBreakoutMode?'🚀 突破模式':ws.isBalancedMode?'⚖️ 均衡模式':'常规模式';
+  document.getElementById('sgKpis').innerHTML=`
+    <div class="kpi"><div class="s">市场温度 TS</div><div class="v">${ws.TS_raw??(ws.TS*100).toFixed(1)}</div><div class="s">交易日 ${ws.tradeDate||'—'}</div></div>
+    <div class="kpi"><div class="s">市场情绪 MC</div><div class="v">${ws.MC??'—'}</div><div class="s">Gini ${ws.GiniCoefficient??'—'}（越低越普涨）</div></div>
+    <div class="kpi"><div class="s">Stage / 系数</div><div class="v">${si.stage} <span style="font-size:13px">×${si.coef}</span></div><div class="s">${mode}</div></div>
+    <div class="kpi"><div class="s">主线趋势</div><div class="v">${ws.MainlineTrend||'—'}</div><div class="s">极端信号：${ws.extremeFlag?.triggered?'⚠️ 已触发 '+(ws.extremeFlag.flags||[]).join(','):'无'} · 引擎v${ws.engineVersion||'?'}</div></div>`;
+  const held=Object.values(SECTOR_MAP);
+  let h='';
+  Object.entries(ws.sectorScores||{}).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+    const g=grade(v);
+    const col=g==='S'?'var(--purple)':g==='A'?'var(--green)':g==='B'?'var(--blue)':g==='C'?'var(--yellow)':'#555';
+    const streak=state.sectorStreaks?.[k]||0;
+    const streakTag=g==='S'&&streak>=2?` <span class="tag ok">连续${streak}周</span>`:'';
+    h+=`<div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:13px">
+        <span>${k}${held.includes(k)?' <span class="tag ok">持仓中</span>':''}${streakTag}</span>
+        <span>${v.toFixed(3)} <span class="tag ${g==='S'?'s':g==='A'?'a':g==='B'?'b':g==='C'?'c':'d'}">${g}级</span></span></div>
+      <div class="bar"><i style="width:${Math.min(v*100,100)}%;background:${col}"></i></div></div>`;
+  });
+  document.getElementById('sgSectors').innerHTML=h;
+  const miss=(ws.sGradeSectors||[]).filter(s=>!held.includes(s));
+  if(miss.length){
+    const streaks=miss.map(s=>{const n=state.sectorStreaks?.[s]||1;return {s,n,ready:(n>=2&&si.stage>=2)};});
+    const ready=streaks.filter(x=>x.ready).map(x=>x.s);
+    const notReady=streaks.filter(x=>!x.ready).map(x=>`${x.s}(${x.n}周)`);
+    let alert='';
+    if(ready.length)alert+=`<div class="dangerbox">🚨 以下S级板块已连续≥2周且Stage≥2，符合战术仓介入条件：<b>${ready.join('、')}</b>。建议用机动额度（≤总资产3%）分批介入</div>`;
+    if(notReady.length)alert+=`<div class="warnbox">👀 观察池：${notReady.join('、')} — 连续不足2周或Stage<2，暂不满足介入条件</div>`;
+    document.getElementById('sgWatch').innerHTML=`<div class="card"><h3>👀 观察池提醒</h3>${alert}</div>`;
+  }else document.getElementById('sgWatch').innerHTML='';
+}
+
+function renderValuation(){
+  const sigs=sellSignals();
+  document.getElementById('vlSignals').innerHTML=sigs.length?
+    sigs.map(s=>`<div class="${s.lv==='danger'?'dangerbox':'warnbox'}">${s.txt}</div>`).join(''):
+    '<div class="okbox">当前持仓对应指数均未触发止盈线</div>';
+  const latest=(state.peData||[]).map(p=>p.date).filter(Boolean).sort().pop();
+  document.getElementById('vlDate').textContent=latest?('数据日期 '+latest):'';
+  document.getElementById('vlTable').innerHTML=`<table><tr><th>指数</th><th>代码</th><th>PE</th><th>PB</th><th>分位</th><th>区间</th><th>来源</th></tr>${
+    (state.peData||[]).slice().sort((a,b)=>(b.pct||0)-(a.pct||0)).map(p=>{
+      const pctv=p.pct;
+      const cls=pctv>80?'pos':pctv>60?'':pctv<30?'neg':'';
+      const zone=pctv>95?'💥 极端':pctv>80?'🔴 止盈区':pctv>60?'🟡 谨慎区':pctv<30?'🟢 加码区':'⚪ 中性';
+      return `<tr><td>${esc(p.name)}</td><td class="mut">${esc(p.code)}</td><td>${p.pe??(p.price!=null?'价'+p.price:'—')}</td><td>${p.pb??'—'}</td><td class="${cls}"><b>${pctv??'—'}%</b></td><td>${zone}</td><td class="mut">${esc(p.source||'')}</td></tr>`;
+    }).join('')}</table>`;
+}
+
+function allocate(amount,maF,st,baseTotal){
+  baseTotal=baseTotal||st.total||1;
+  const t=curTargets();
+  const rows=[];
+  state.holdings.forEach(g=>{
+    if(g.positionId==='cash')return;
+    g.funds.forEach(f=>{
+      const gap=f.targetRatio/100*baseTotal-f.marketValue;
+      let blocked=null,factor=1,score=null,note=[];
+      const proxy=PE_PROXY[f.code]||COMMODITY_PROXY[f.code];const pe=proxy?getPe(proxy):null;
+      const isCommodity=!PE_PROXY[f.code]&&!!COMMODITY_PROXY[f.code];
+      if(pe&&pe.pct!=null){
+        if(pe.pct>80){blocked=(isCommodity?'金价闸门：':'估值闸门：')+`${pe.name}分位${pe.pct}%`;}
+        else if(pe.pct>60){factor=0.7;note.push('估值偏高×0.7');}
+        else if(pe.pct<30){factor=1.2;note.push('估值低位×1.2');}
+      }
+      const sec=SECTOR_MAP[f.code];
+      if(sec&&state.weeklySignals&&state.weeklySignals.sectorScores){
+        score=state.weeklySignals.sectorScores[sec];
+        if(score!=null){
+          if(score<0.3&&!blocked)blocked=`板块信号弱：${sec} ${score.toFixed(2)}`;
+          else note.push(`${sec}评分${score.toFixed(2)}加权`);
+        }
+      }
+      if(g.positionId==='tactical'){const ms=maState(f);if(ms)note.push('MA:'+ms.label);else note.push('MA:数据不足(需≥50日)');}
+      if(!blocked&&gap<=0)blocked='已达标，停买';
+      const pool=g.positionId==='tactical'?'tactical':'core';
+      const w=blocked?0:gap*factor*(score!=null?(0.5+score):1);
+      rows.push({f,g:g.positionId,pool,gap,blocked,w,note:note.join(' · '),amount:0});
+    });
+  });
+  const tacticalTgt=t.tactical||0;
+  const coreTgt=(t.core||0)+(t.hedge||0);
+  const denom=tacticalTgt+coreTgt;
+  const tacticalBudget=denom>0?amount*tacticalTgt/denom:0;
+  const coreBudget=amount-tacticalBudget;
+  const tacticalEff=tacticalBudget*maF;
+  const maHold=tacticalBudget-tacticalEff;
+  const pools=[
+    {budget:coreBudget,rs:rows.filter(r=>r.pool==='core')},
+    {budget:tacticalEff,rs:rows.filter(r=>r.pool==='tactical')}
+  ];
+  pools.forEach(p=>{
+    const W=p.rs.reduce((s,r)=>s+r.w,0);
+    p.rs.forEach(r=>{
+      const amt=W>0?p.budget*r.w/W:0;
+      r.amount=Math.floor(amt/100)*100;
+    });
+  });
+  rows.maHold=Math.floor(maHold/100)*100;
+  return rows;
+}
+function allocTable(rows){
+  return `<table><tr><th>基金</th><th>仓别</th><th>目标缺口</th><th>建议买入</th><th>说明</th></tr>${
+    rows.map(r=>`<tr><td>${esc(r.f.name)}</td><td>${POS_META[r.g]?.label||r.g}</td>
+      <td>${r.gap>0?fmt(r.gap):'—'}</td>
+      <td><b>${r.amount>0?fmt(r.amount):'0'}</b></td>
+      <td style="text-align:left">${r.blocked?`<span class="tag warn">⛔ ${esc(r.blocked)}</span>`:`<span class="mut">${esc(r.note)||'按缺口比例'}</span>`}</td></tr>`).join('')}</table>`;
+}
+
+function renderDCA(){
+  const st=stats(),si=stageInfo(),t=curTargets();
+  const budget=num(document.getElementById('wkBudget').value);
+  const maF=Number(document.getElementById('maSel').value);
+  const tgIn=num(document.getElementById('tgTotal').value);
+  const baseTotal=tgIn>0?Math.max(tgIn,st.total):st.total;
+  const eff=budget*si.coef;
+  const rows=allocate(eff,maF,st,baseTotal);
+  lastWeeklyRows=rows;
+  const sum=rows.reduce((s,r)=>s+r.amount,0);
+  let baseNote='';
+  if(tgIn>0&&tgIn>st.total)baseNote=`缺口按目标总资产 <b>${fmt(baseTotal)}</b> 计算（当前 ${fmt(st.total)}）。`;
+  else if(tgIn>0&&tgIn<=st.total)baseNote=`目标总资产 ${fmt(tgIn)} 不高于当前总资产，已按当前总资产 ${fmt(st.total)} 计算。`;
+  document.getElementById('dcaInfo').innerHTML=
+    `${baseNote}Stage ${si.stage}（系数×${si.coef}）→ 有效预算 <b>${fmt(eff)}</b>；战术仓另乘MA系数×${maF}。`+
+    `实际分配 <b>${fmt(sum)}</b>，留存现金 ${fmt(Math.max(0,budget-sum))}`+
+    ((rows.maHold>0)?`（其中战术仓因MA系数少买 <b>${fmt(rows.maHold)}</b>，未回流核心、转为留存现金）`:'');
+  document.getElementById('dcaTable').innerHTML=allocTable(rows);
+
+  const cashMV=st.groups.cash?.mv||0;
+  const excess=cashMV-t.cash/100*st.total;
+  const monthAmt=Math.max(0,excess*si.pace);
+  document.getElementById('atkInfo').innerHTML=excess>0?
+    `<div class="okbox">现金仓实际 ${pct(cashMV,st.total).toFixed(1)}% vs 目标 ${t.cash}%，超配 <b>${fmt(excess)}</b>。Stage ${si.stage} 节奏：本月动用缺口的 ${(si.pace*100).toFixed(0)}% ≈ <b>${fmt(monthAmt)}</b>。执行纪律：分2~4笔、只在沪深300单日跌幅≥0.8%的回调日执行，月初随信号刷新节奏。</div>`:
+    `<div class="warnbox">现金仓未超配，本月无大额建仓任务，按周定投即可。</div>`;
+  document.getElementById('atkTable').innerHTML=monthAmt>0?allocTable(allocate(monthAmt,maF,st,baseTotal)):'';
+}
+
+function renderLog(){
+  const tx=state.transactions||[];
+  document.getElementById('txTable').innerHTML=tx.length?
+    `<table><tr><th>日期</th><th>代码</th><th>名称</th><th>方向</th><th>金额</th><th>份额</th><th>净值</th><th>备注</th><th></th></tr>${
+      tx.map((x,i)=>`<tr><td>${esc(x.date)}</td><td class="mut">${esc(x.code)}</td><td>${esc(x.name)}</td>
+        <td class="${x.side==='买入'?'pos':'neg'}">${esc(x.side)}</td><td>${fmt(num(x.amount))}</td>
+        <td class="mut">${x.shares!=null?Number(x.shares).toLocaleString('zh-CN'):'—'}</td>
+        <td class="mut">${x.nav!=null?esc(x.nav):'—'}</td>
+        <td class="mut">${esc(x.note||'')}</td>
+        <td><button class="del" onclick="delTx(${i})">✕</button></td></tr>`).join('')}</table>`:
+    '<div class="mut">暂无记录</div>';
+}
+window.delTx=function(i){state.transactions.splice(i,1);persist('已删除记录');};
+
+function renderData(){
+  document.getElementById('saveStat').textContent=state.lastSaved?('上次保存：'+new Date(state.lastSaved).toLocaleString('zh-CN')):'从未保存';
+}
+function renderAll(){
+  renderOverview();renderSignals();renderValuation();renderDCA();renderLog();renderData();
+  document.getElementById('hdStat').textContent=state.lastSaved?('数据时间 '+new Date(state.lastSaved).toLocaleDateString('zh-CN')):'';
+  if(flashTarget){
+    const c=document.querySelector(`td.ed[data-fid="${flashTarget.fid}"][data-f="${flashTarget.f}"]`);
+    if(c){c.classList.add('flash');setTimeout(()=>c.classList.remove('flash'),900);}
+    flashTarget=null;
+  }
+  if(pendingEdit){
+    const c=document.querySelector(`td.ed[data-fid="${pendingEdit.fid}"][data-f="${pendingEdit.f}"]`);
+    pendingEdit=null;
+    if(c)openEdit(c);
+  }
+}
+
+/* ---------- 事件 ---------- */
+document.getElementById('nav').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('main>section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+b.dataset.t));
+});
+document.getElementById('calcBtn').onclick=renderDCA;
+document.getElementById('wkBudget').oninput=renderDCA;
+document.getElementById('tgTotal').oninput=renderDCA;
+document.getElementById('maSel').onchange=renderDCA;
+document.getElementById('logBtn').onclick=()=>{
+  const today=new Date().toISOString().slice(0,10);
+  const buys=lastWeeklyRows.filter(r=>r.amount>0);
+  if(!buys.length){toast('当前无可执行买入');return;}
+  buys.forEach(r=>state.transactions.unshift({date:today,code:r.f.code,name:r.f.name,side:'买入',amount:r.amount,shares:null,nav:null,note:'周定投'}));
+  buys.forEach(r=>applyTxToHolding({code:r.f.code,side:'买入',amount:r.amount,shares:null,nav:null}));
+  persist(`已记录 ${buys.length} 笔买入到交易日志（现金仓已扣款）`);
+};
+document.getElementById('txAdd').onclick=()=>{
+  const d=document.getElementById('txDate').value,c=document.getElementById('txCode').value.trim(),
+        n=document.getElementById('txName').value.trim(),s=document.getElementById('txSide').value,
+        note=document.getElementById('txNote').value.trim();
+  const sh=num(document.getElementById('txShares').value),nav=num(document.getElementById('txNav').value);
+  let a=num(document.getElementById('txAmt').value);
+  if(a<=0&&sh>0&&nav>0)a=Math.round(sh*nav*100)/100;
+  if(!d||!n||a<=0){toast('请填写日期、名称，金额可填写或由份额×净值算出');return;}
+  state.transactions.unshift({date:d,code:c,name:n,side:s,amount:a,shares:sh>0?sh:null,nav:nav>0?nav:null,note});
+  const _ok=applyTxToHolding({code:c,side:s,amount:a,shares:sh>0?sh:null,nav:nav>0?nav:null});
+  if(!_ok)toast('已记流水；未找到代码 '+c+' 对应持仓，未回写');
+  persist('已记录');
+};
+document.getElementById('saveBtn').onclick=()=>persist();
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='portfolio-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  toast('已导出JSON');
+};
+function importText(t){
+  const err=document.getElementById('importErr');err.textContent='';
+  try{state=normalize(JSON.parse(t));persist('✅ 导入成功');}
+  catch(e){err.textContent='❌ 导入失败：'+e.message+'（请确认是完整组合JSON而非sector_scores片段）';toast('导入失败，见错误提示');}
+}
+document.getElementById('pasteBtn').onclick=()=>importText(document.getElementById('pasteBox').value);
+document.getElementById('fileInp').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>importText(r.result);r.readAsText(f);e.target.value='';
+};
+document.getElementById('resetBtn').onclick=()=>{
+  if(!resetArmed){resetArmed=true;document.getElementById('resetBtn').textContent='⚠️ 再次点击确认恢复';setTimeout(()=>{resetArmed=false;document.getElementById('resetBtn').textContent='🗑 恢复内置默认数据';},3000);return;}
+  resetArmed=false;document.getElementById('resetBtn').textContent='🗑 恢复内置默认数据';
+  state=normalize(JSON.parse(JSON.stringify(DEFAULT_DATA)));persist('已恢复默认数据');loadAllocation();
+};
+
+/* 总仓位分配编辑 */
+function loadAllocation(){
+  const t=curTargets();
+  document.getElementById('alloc-core').value=t.core;
+  document.getElementById('alloc-tactical').value=t.tactical;
+  document.getElementById('alloc-hedge').value=t.hedge;
+  document.getElementById('alloc-cash').value=t.cash;
+  updateAllocSum();
+}
+function updateAllocSum(){
+  const c=num(document.getElementById('alloc-core').value)||0;
+  const ta=num(document.getElementById('alloc-tactical').value)||0;
+  const h=num(document.getElementById('alloc-hedge').value)||0;
+  const ca=num(document.getElementById('alloc-cash').value)||0;
+  const sum=c+ta+h+ca;
+  const el=document.getElementById('allocSum');
+  if(sum===100)el.innerHTML='<div class="okbox">合计 = 100% ✓</div>';
+  else el.innerHTML=`<div class="warnbox">合计 = ${sum}% · 建议调整为100%（当前偏差 ${sum-100}%）</div>`;
+}
+document.getElementById('allocSave').onclick=()=>{
+  const c=num(document.getElementById('alloc-core').value)||0;
+  const ta=num(document.getElementById('alloc-tactical').value)||0;
+  const h=num(document.getElementById('alloc-hedge').value)||0;
+  const ca=num(document.getElementById('alloc-cash').value)||0;
+  if([c,ta,h,ca].some(v=>v<0||v>100)){toast('每项百分比必须在0~100之间');return;}
+  const key=new Date().toISOString().slice(0,7);
+  if(!state.monthlyTargets)state.monthlyTargets={};
+  state.monthlyTargets[key]={core:c,tactical:ta,hedge:h,cash:ca};
+  persistSilent();
+  updateAllocSum();
+  renderAll();
+  toast('仓位分配已保存');
+};
+['alloc-core','alloc-tactical','alloc-hedge','alloc-cash'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updateAllocSum);
+});
+
+document.getElementById('refreshBtn').onclick=refreshQuotes;
+
+/* 远程同步（从 GitHub Gist 拉取最新 portfolio） */
+const GIST_URL='https://gist.githubusercontent.com/camovibe/46ee0035eaeeeb05a19d981ff2948f18/raw/portfolio.json';
+async function syncFromGist(){
+  try{
+    toast('正在从 Gist 同步...');
+    const url=GIST_URL+'?t='+Date.now();
+    const res=await fetch(url,{cache:'no-cache'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const text=await res.text();
+    const json=JSON.parse(text);
+    const prevStreaks=state?.sectorStreaks||{};
+    const prevStreakWeek=state?.lastStreakWeek;
+    state=normalize(json);
+    const merged={...(state.sectorStreaks||{})};
+    Object.entries(prevStreaks).forEach(([k,v])=>{merged[k]=Math.max(merged[k]||0,v);});
+    state.sectorStreaks=merged;
+    state.lastStreakWeek=prevStreakWeek||state.lastStreakWeek;
+    calcSectorStreaks();
+    persist('✅ 已从 Gist 远程同步');
+    loadAllocation();
+  }catch(e){toast('同步失败：'+e.message);}
+}
+document.getElementById('syncBtn').onclick=syncFromGist;
+
+/* Gist 一键推送 */
+const GIST_LS_KEY='warroom_gist_config';
+function loadGistConfig(){
+  try{
+    const s=localStorage.getItem(GIST_LS_KEY);
+    if(s){
+      const c=JSON.parse(s);
+      if(c.token)document.getElementById('gistToken').value=c.token;
+      if(c.gistId)document.getElementById('gistId').value=c.gistId;
+    }
+  }catch(e){}
+}
+function saveGistConfig(){
+  const token=document.getElementById('gistToken').value.trim();
+  const gistId=document.getElementById('gistId').value.trim();
+  if(!token||!gistId){toast('请填写 Token 和 Gist ID');return;}
+  try{localStorage.setItem(GIST_LS_KEY,JSON.stringify({token,gistId}));toast('配置已保存到浏览器');}
+  catch(e){toast('本环境无法保存配置');}
+}
+async function pushToGist(){
+  const token=document.getElementById('gistToken').value.trim();
+  const gistId=document.getElementById('gistId').value.trim();
+  const statusEl=document.getElementById('gistStatus');
+  const fallbackEl=document.getElementById('gistFallback');
+  const fallbackBox=document.getElementById('gistFallbackBox');
+  if(!token||!gistId){toast('请先填写 Token 和 Gist ID 并保存');return;}
+  fallbackEl.style.display='none';
+  try{
+    statusEl.innerHTML='<div class="mut">正在推送...</div>';
+    const res=await fetch(`https://api.github.com/gists/${gistId}`,{
+      method:'PATCH',mode:'cors',cache:'no-cache',
+      headers:{'Authorization':`token ${token}`,'Content-Type':'application/json','Accept':'application/vnd.github+json','X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({files:{'portfolio.json':{content:JSON.stringify(state,null,2)}}})
+    });
+    if(!res.ok){const txt=await res.text();throw new Error(`HTTP ${res.status} ${txt.slice(0,200)}`);}
+    statusEl.innerHTML='<div class="okbox">✅ 已推送到 Gist，手机端点击「远程同步」即可获取最新数据</div>';
+    toast('推送成功');
+  }catch(e){
+    const msg=e.message||'';
+    const isNetwork=msg.includes('Failed to fetch')||msg.includes('NetworkError')||msg.includes('CORS')||msg.includes('fetch');
+    if(isNetwork){
+      statusEl.innerHTML='<div class="warnbox">❌ 浏览器 CORS 限制阻止了自动推送，请使用下方手动复制方案。</div>';
+      fallbackBox.value=JSON.stringify(state,null,2);
+      fallbackEl.style.display='block';
+    }else{
+      statusEl.innerHTML=`<div class="warnbox">❌ 推送失败：${e.message}</div>`;
+    }
+    toast('推送失败');
+  }
+}
+document.getElementById('gistSaveConfig').onclick=saveGistConfig;
+document.getElementById('gistPush').onclick=pushToGist;
+document.getElementById('gistCopyBtn').onclick=()=>{
+  const box=document.getElementById('gistFallbackBox');
+  box.select();
+  try{document.execCommand('copy');toast('已复制 JSON 到剪贴板');}catch(e){toast('复制失败，请手动选择');}
+};
+
+/* ---------- 初始化 ---------- */
+state=loadState();
+document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
+renderAll();
+loadAllocation();
+loadGistConfig();
+</script>
+</body>
+</html>
