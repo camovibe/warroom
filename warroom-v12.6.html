@@ -1165,26 +1165,50 @@ document.getElementById('allocSave').onclick=()=>{
 document.getElementById('refreshBtn').onclick=refreshQuotes;
 
 /* 远程同步（从 GitHub Gist 拉取最新 portfolio） */
-const GIST_URL='https://gist.githubusercontent.com/camovibe/46ee0035eaeeeb05a19d981ff2948f18/raw/portfolio.json';
+const GIST_ID='46ee0035eaeeeb05a19d981ff2948f18';
+const GIST_RAW_URL='https://gist.githubusercontent.com/camovibe/46ee0035eaeeeb05a19d981ff2948f18/raw/portfolio.json';
 async function syncFromGist(){
   try{
     toast('正在从 Gist 同步...');
-    const url=GIST_URL+'?t='+Date.now();
-    const res=await fetch(url,{cache:'no-cache'});
+    // 策略1：尝试 raw URL（最快，但可能 429 限流）
+    let res=await fetch(GIST_RAW_URL+'?t='+Date.now(),{cache:'no-cache'});
+    // 策略2：raw 被限流时，回退到 GitHub API（限额更高）
+    if(res.status===429){
+      toast('raw 链接限流，尝试 API 方式...');
+      const apiRes=await fetch('https://api.github.com/gists/'+GIST_ID,{headers:{'Accept':'application/vnd.github+json'}});
+      if(!apiRes.ok)throw new Error('API HTTP '+apiRes.status);
+      const apiJson=await apiRes.json();
+      const file=apiJson.files?.['portfolio.json'];
+      if(!file)throw new Error('Gist 中未找到 portfolio.json');
+      // 直接用 API 返回的 content（<1MB 时完整返回）
+      const text=file.content;
+      const json=JSON.parse(text);
+      return applyGistJson(json);
+    }
     if(!res.ok)throw new Error('HTTP '+res.status);
     const text=await res.text();
     const json=JSON.parse(text);
-    const prevStreaks=state?.sectorStreaks||{};
-    const prevStreakWeek=state?.lastStreakWeek;
-    state=normalize(json);
-    const merged={...(state.sectorStreaks||{})};
-    Object.entries(prevStreaks).forEach(([k,v])=>{merged[k]=Math.max(merged[k]||0,v);});
-    state.sectorStreaks=merged;
-    state.lastStreakWeek=prevStreakWeek||state.lastStreakWeek;
-    calcSectorStreaks();
-    persist('✅ 已从 Gist 远程同步');
-    loadAllocation();
-  }catch(e){toast('同步失败：'+e.message);}
+    return applyGistJson(json);
+  }catch(e){
+    const msg=e.message||'';
+    if(msg.includes('429')||msg.includes('Too Many Requests')){
+      toast('同步失败：GitHub 限流，请 1-2 分钟后重试');
+    }else{
+      toast('同步失败：'+msg);
+    }
+  }
+}
+function applyGistJson(json){
+  const prevStreaks=state?.sectorStreaks||{};
+  const prevStreakWeek=state?.lastStreakWeek;
+  state=normalize(json);
+  const merged={...(state.sectorStreaks||{})};
+  Object.entries(prevStreaks).forEach(([k,v])=>{merged[k]=Math.max(merged[k]||0,v);});
+  state.sectorStreaks=merged;
+  state.lastStreakWeek=prevStreakWeek||state.lastStreakWeek;
+  calcSectorStreaks();
+  persist('✅ 已从 Gist 远程同步');
+  loadAllocation();
 }
 document.getElementById('syncBtn').onclick=syncFromGist;
 
