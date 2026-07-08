@@ -248,7 +248,7 @@ td.flash{animation:cellflash .9s ease-out}
     <label>基金名称 <input id="mName" type="text" placeholder="例：沪深300"></label>
     <label>基金代码 <input id="mCode" type="text" placeholder="例：110020"></label>
     <label>当前市值 <input id="mMv" type="number" placeholder="0"></label>
-    <label>累计盈亏（可填0） <input id="mPf" type="number" placeholder="0"></label>
+    <label>累计盈亏(持仓收益)（可填0） <input id="mPf" type="number" placeholder="0"></label>
     <label>目标占比 %（可填0） <input id="mTg" type="number" placeholder="0"></label>
     <div class="modalrow">
       <button class="btn" id="modalCancel">取消</button>
@@ -333,14 +333,11 @@ function normalize(raw){
   if(!Array.isArray(hs))throw new Error('缺少 holdings 数组（兼容字段名 positions）');
   const mapFund=f=>{
     const marketValue=num(f.marketValue??f.amount??f.value);
-    const profit=num(f.profit??f.pnl); // 累计盈亏：独立展示，不参与反推
+    const profit=num(f.profit??f.pnl); // 累计盈亏(持仓收益)：独立展示，不参与反推
     const shares=(f.shares!=null&&isFinite(Number(f.shares)))?Number(f.shares):null;
-    const costUnit=(f.costUnit!=null&&isFinite(Number(f.costUnit)))?Number(f.costUnit):null;
-    let cost=(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null;
-    // 仅用 costUnit×shares 反推持仓成本；绝不用 profit 反推（profit 含已实现，会失真）
-    if(cost==null&&costUnit!=null&&shares!=null){
-      cost=Math.round(shares*costUnit*100)/100;
-    }
+    // costUnit 已停用：平台的综合成本单价在部分赎回后可能为负，会导致 cost 反推错误
+    // cost 一律由用户直接填写「持有成本」
+    const cost=(f.cost!=null&&isFinite(Number(f.cost)))?Number(f.cost):null;
     return{
       id:f.id||('f'+Math.random().toString(36).slice(2)),
       code:String(f.code??''),
@@ -348,7 +345,7 @@ function normalize(raw){
       marketValue,
       profit,
       cost,
-      costUnit,
+      costUnit:null, // 清空残留值，避免污染
       shares,
       holdProfit:(f.holdProfit!=null&&isFinite(Number(f.holdProfit)))?Number(f.holdProfit):null,
       _lastPrice:(f._lastPrice!=null&&isFinite(Number(f._lastPrice)))?Number(f._lastPrice):null,
@@ -629,10 +626,7 @@ function anomalies(){
 function reconcile(f){
   if(f.marketValue!=null&&f.marketValue<0)f.marketValue=0;
   if(f.shares===0){f.marketValue=0;f.cost=0;f.profit=f.profit||0;f.holdProfit=0;f._lastPrice=null;return;}
-  if(f.cost==null&&f.costUnit!=null&&f.shares!=null&&f.shares>0){
-    f.cost=Math.round(f.shares*f.costUnit*100)/100;
-  }
-  // 持有收益始终 = 市值 − 持仓成本（唯一自动计算，只读）
+  // 持有收益始终 = 市值 − 持有成本（唯一自动计算，只读）
   if(f.cost!=null&&f.marketValue!=null){
     f.holdProfit=Math.round((f.marketValue-f.cost)*100)/100;
   }else{
@@ -743,7 +737,7 @@ function openEdit(cell){
   const fund=findFund(cell.dataset.fid);if(!fund)return;
   const field=cell.dataset.f;
   const isText=field==='name'||field==='code'||field==='_lastPriceDate';
-  cell.innerHTML=`<input class="cellinp" type="${isText?'text':'number'}" ${isText?'':`step="${field==='costUnit'||field==='_lastPrice'?'0.0001':'0.01'}"`} value="${esc(fund[field]??'')}">`;
+  cell.innerHTML=`<input class="cellinp" type="${isText?'text':'number'}" ${isText?'':`step="${field==='_lastPrice'?'0.0001':'0.01'}"`} value="${esc(fund[field]??'')}">`;
   const inp=cell.querySelector('input');
   editing={cell,fund,field};
   inp.focus();inp.select();
@@ -774,7 +768,7 @@ function commitEdit(){
     if(isFinite(v)&&v!==fund[field]){
       fund[field]=field==='targetRatio'?Math.max(0,v):v;
       // profit（累计盈亏）为独立字段，编辑后仅展示，不反推成本
-      if(field!=='holdProfit'&&field!=='targetRatio'&&field!=='_lastPriceDate'&&field!=='profit'){
+      if(field!=='holdProfit'&&field!=='targetRatio'&&field!=='_lastPriceDate'&&field!=='profit'&&field!=='costUnit'){
         if(field==='_lastPrice'&&fund.shares!=null&&fund.shares>0){
           fund.marketValue=Math.round(fund.shares*v*100)/100;
           fund._lastPriceDate=new Date().toISOString().slice(0,10);
@@ -852,7 +846,7 @@ function renderOverview(){
       const gap=f.targetRatio/100*st.total-f.marketValue;
       rows+=`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}
         ${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}
-        ${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}
+        ${edCell(f,'cost',f.cost!=null?f.cost.toFixed(2):'-','mut')}
         ${edCell(f,'_lastPrice',f._lastPrice!=null?f._lastPrice.toFixed(4):'-','mut')}
         ${edCell(f,'_lastPriceDate',f._lastPriceDate||'-','mut')}
         ${edCell(f,'marketValue',fmt(f.marketValue))}
@@ -865,11 +859,11 @@ function renderOverview(){
         <td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`;
     });
   });
-  document.getElementById('ovFunds').innerHTML=`<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>累计盈亏</th><th>持有收益</th><th>实际%</th><th>目标%</th><th>缺口</th><th>信号提示</th><th>操作</th></tr>${rows}</table>`;
+  document.getElementById('ovFunds').innerHTML=`<table><tr><th>基金</th><th>代码</th><th>份数</th><th>持有成本</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>累计盈亏(持仓收益)</th><th>持有收益</th><th>实际%</th><th>目标%</th><th>缺口</th><th>信号提示</th><th>操作</th></tr>${rows}</table>`;
 
   document.getElementById('ovCustom').innerHTML=state.customFunds.length?
-    `<table><tr><th>基金</th><th>代码</th><th>份数</th><th>成本单价</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>累计盈亏</th><th>持有收益</th><th>占总资产</th><th>操作</th></tr>${
-      state.customFunds.map(f=>`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}${edCell(f,'costUnit',f.costUnit!=null?f.costUnit.toFixed(4):'-','mut')}${edCell(f,'_lastPrice',f._lastPrice!=null?f._lastPrice.toFixed(4):'-','mut')}${edCell(f,'_lastPriceDate',f._lastPriceDate||'-','mut')}${edCell(f,'marketValue',fmt(f.marketValue))}${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}<td class="${f.holdProfit!=null?pnlCls(f.holdProfit):'mut'}">${f.holdProfit!=null?sign(f.holdProfit):'-'}</td><td>${pct(f.marketValue,st.total).toFixed(1)}%</td><td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`).join('')
+    `<table><tr><th>基金</th><th>代码</th><th>份数</th><th>持有成本</th><th>最新净值</th><th>净值日期</th><th>市值</th><th>累计盈亏(持仓收益)</th><th>持有收益</th><th>占总资产</th><th>操作</th></tr>${
+      state.customFunds.map(f=>`<tr>${edCell(f,'name',esc(f.name))}${edCell(f,'code',esc(f.code),'mut')}${edCell(f,'shares',f.shares!=null?f.shares.toFixed(2):'-','mut')}${edCell(f,'cost',f.cost!=null?f.cost.toFixed(2):'-','mut')}${edCell(f,'_lastPrice',f._lastPrice!=null?f._lastPrice.toFixed(4):'-','mut')}${edCell(f,'_lastPriceDate',f._lastPriceDate||'-','mut')}${edCell(f,'marketValue',fmt(f.marketValue))}${edCell(f,'profit',sign(f.profit),pnlCls(f.profit))}<td class="${f.holdProfit!=null?pnlCls(f.holdProfit):'mut'}">${f.holdProfit!=null?sign(f.holdProfit):'-'}</td><td>${pct(f.marketValue,st.total).toFixed(1)}%</td><td><button class="del" onclick="delFund('${esc(f.id)}')">✕</button></td></tr>`).join('')
     }</table>`:'<div class="mut">无</div>';
 }
 
